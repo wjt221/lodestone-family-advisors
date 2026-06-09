@@ -93,6 +93,54 @@ export function totalCommitmentOf(holdings: HoldingView[]): number {
   return holdings.reduce((s, h) => s + (h.commitment ?? 0), 0);
 }
 
+export interface OwnerExposure {
+  owner: string;
+  value: number;
+  pct: number;
+  positions: number;
+  byClass: BreakdownRow[];
+  color: string;
+}
+
+/**
+ * Look-through exposure per owner: each holding's value is attributed to its
+ * owners at their ownership percentages (e.g. a Scorpio holding contributes
+ * 70% of its value to Kim and 30% to Cindy).
+ */
+export function ownerLookThrough(holdings: HoldingView[]): OwnerExposure[] {
+  const total = totalValue(holdings) || 1;
+  const map = new Map<string, { value: number; positions: number; classes: Map<string, number> }>();
+  for (const h of holdings) {
+    const owners = h.owners.length ? h.owners : [{ name: "Unattributed", pct: 100 }];
+    for (const o of owners) {
+      const slice = (h.value * o.pct) / 100;
+      const cur = map.get(o.name) ?? { value: 0, positions: 0, classes: new Map() };
+      cur.value += slice;
+      cur.positions += 1;
+      cur.classes.set(h.assetClass, (cur.classes.get(h.assetClass) ?? 0) + slice);
+      map.set(o.name, cur);
+    }
+  }
+  return [...map.entries()]
+    .map(([owner, { value, positions, classes }]) => ({
+      owner,
+      value,
+      positions,
+      pct: (value / total) * 100,
+      color: colorFor(owner),
+      byClass: [...classes.entries()]
+        .map(([label, v]) => ({
+          label,
+          value: v,
+          count: 0,
+          pct: value ? (v / value) * 100 : 0,
+          color: colorFor(label),
+        }))
+        .sort((a, b) => b.value - a.value),
+    }))
+    .sort((a, b) => b.value - a.value);
+}
+
 export interface RangeRow {
   assetClass: string;
   current: number;

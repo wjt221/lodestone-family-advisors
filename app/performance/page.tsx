@@ -5,6 +5,7 @@ import { Stat } from "@/components/stat";
 import { StatusPill } from "@/components/status-pill";
 import { getPerformance, type PerformanceView } from "@/lib/data/performance";
 import { getActiveClient } from "@/lib/data/clients";
+import { getHoldingsDetailed } from "@/lib/data/holdings";
 import { fmtMillions } from "@/lib/calculations";
 
 const pct = (v: number | null, digits = 1) =>
@@ -63,7 +64,14 @@ function ReturnsTable({
 }
 
 export default async function PerformancePage() {
-  const [performance, client] = await Promise.all([getPerformance(), getActiveClient()]);
+  const [performance, client, holdings] = await Promise.all([
+    getPerformance(),
+    getActiveClient(),
+    getHoldingsDetailed(),
+  ]);
+
+  // Lodestone-sourced deals are identified by manager on the schedule.
+  const lodestoneDeals = holdings.filter((h) => /lodestone/i.test(h.manager));
 
   const byScope = (s: string) => performance.filter((p) => p.scope === s);
   const assetClasses = byScope("asset_class");
@@ -84,7 +92,7 @@ export default async function PerformancePage() {
       <PageHeader
         eyebrow="Performance Review"
         title="Returns against expectations"
-        lede="Since-inception returns by asset class against the expected-return framework and benchmarks, plus the Lodestone-directed internal portfolio and entity-level results."
+        lede="Since-inception returns by asset class against the expected-return framework and benchmarks, plus the family's internally directed portfolio, entity-level results, and Lodestone-sourced investments."
         status={{ label: "Discussion Point", tone: "info" }}
         client={{ name: client.name, asOf }}
       />
@@ -174,13 +182,72 @@ export default async function PerformancePage() {
         </Panel>
       </section>
 
+      {/* Lodestone-sourced investments */}
+      {lodestoneDeals.length > 0 && (
+        <section className="mb-10">
+          <SectionHeading
+            eyebrow="Lodestone-sourced"
+            title="Lodestone investments"
+            description="Opportunities sourced and structured by Lodestone Family Advisors."
+          />
+          <Panel inset className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-[13px]">
+              <thead>
+                <tr className="border-b border-hairline">
+                  {["Investment", "Entity", "Strategy", "Committed", "Value", "Result"].map((h, i) => (
+                    <th
+                      key={h}
+                      className={`px-5 py-3 font-medium text-ink-muted ${i >= 3 && i < 5 ? "text-right" : "text-left"}`}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-hairline">
+                {lodestoneDeals.map((h) => (
+                  <tr key={h.id} className="transition-colors hover:bg-secondary/40">
+                    <td className="px-5 py-3.5">
+                      <p className="font-medium text-ink">{h.name}</p>
+                      <p className="text-[11.5px] text-ink-muted">
+                        {h.structure}
+                        {h.vintage ? ` · ${h.vintage}` : ""}
+                      </p>
+                    </td>
+                    <td className="px-5 py-3.5 text-ink-muted">{h.entityName}</td>
+                    <td className="px-5 py-3.5 text-ink-muted">{h.strategy}</td>
+                    <td className="tnum px-5 py-3.5 text-right text-ink-muted">
+                      {h.commitment ? fmtMillions(h.commitment, 2) : "—"}
+                    </td>
+                    <td className="tnum px-5 py-3.5 text-right font-medium text-ink">
+                      {fmtMillions(h.value, 2)}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {/IRR|MOIC|\d+(\.\d+)?x/i.test(h.note) ? (
+                        <StatusPill tone="positive" dot={false}>
+                          {h.note}
+                        </StatusPill>
+                      ) : (
+                        <span className="text-[12px] text-ink-muted">
+                          {h.note || "Held at cost"}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Panel>
+        </section>
+      )}
+
       {/* Internal portfolio vs benchmark */}
       {internal.length > 0 && (
         <section className="mb-10">
           <SectionHeading
-            eyebrow="Lodestone-directed"
+            eyebrow="Family-directed"
             title="Internal portfolio vs. benchmark"
-            description="The directly managed sleeve, measured against public-market-equivalent benchmarks (since-inception IRR, 2016)."
+            description="The family's internally directed capital, measured against public-market-equivalent benchmarks (since-inception IRR, 2016)."
           />
           <ReturnsTable rows={internal} benchmarkLabel="Benchmark" />
         </section>
