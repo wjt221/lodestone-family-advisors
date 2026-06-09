@@ -4,7 +4,7 @@ An advisor-led **investment strategy, governance, and portfolio oversight portal
 Lodestone Family Advisors. It is designed to feel like a premium private family-office
 portal — an *Investment Operating System*, not a portfolio tracker.
 
-**Demo client:** Atwater Family Office — $47.3M illustrative AUM across three entities.
+**Demo client:** Family Office — $47.3M illustrative AUM across three entities.
 
 > **Not a robo-advisor.** The app never auto-recommends, buys, or sells. Every analytical
 > output is framed as a review item for the advisor and Investment Committee. All figures
