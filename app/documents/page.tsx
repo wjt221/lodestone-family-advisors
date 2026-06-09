@@ -3,7 +3,8 @@ import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section";
 import { Panel } from "@/components/panel";
 import { StatusPill, toneForLabel } from "@/components/status-pill";
-import { getDocuments } from "@/lib/data/documents";
+import { getDocuments, canWriteDocuments } from "@/lib/data/documents";
+import { NewDocumentForm } from "./new-document-form";
 
 const CATEGORY_ORDER = [
   "Policy",
@@ -14,7 +15,7 @@ const CATEGORY_ORDER = [
 ];
 
 export default async function DocumentsPage() {
-  const documents = await getDocuments();
+  const [documents, canWrite] = await Promise.all([getDocuments(), canWriteDocuments()]);
 
   const known = CATEGORY_ORDER.map((cat) => ({
     cat,
@@ -38,6 +39,8 @@ export default async function DocumentsPage() {
         lede="Policies, diligence memos, reporting, and governance records in one place — so decisions are documented, reviewable, and never lost between meetings."
         status={{ label: `${drafts} in review`, tone: "caution" }}
       />
+
+      {canWrite ? <NewDocumentForm /> : null}
 
       <div className="space-y-8">
         {byCategory.map((group) => (

@@ -4,17 +4,15 @@ import { Panel } from "@/components/panel";
 import { Stat } from "@/components/stat";
 import { StatusPill, toneForLabel } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
-import {
-  RISK_REGISTER,
-  type RiskSeverity,
-  type RiskItem,
-} from "@/lib/mock-data";
+import { type RiskSeverity } from "@/lib/mock-data";
 import {
   illiquidPct,
   marketMix,
   allocationByClass,
   fmtPct,
 } from "@/lib/calculations";
+import { getRiskRegister, canWriteRisk, type RiskView } from "@/lib/data/risk";
+import { NewRiskForm } from "./new-risk-form";
 
 const SEVERITY_TONE: Record<RiskSeverity, "critical" | "caution" | "info"> = {
   Elevated: "critical",
@@ -34,13 +32,15 @@ const REVIEW_STATUSES = new Set([
   "Diligence in Progress",
 ]);
 
-function RiskRow({ r }: { r: RiskItem }) {
+function RiskRow({ r }: { r: RiskView }) {
+  const severityTone = SEVERITY_TONE[r.severity as RiskSeverity] ?? "caution";
+  const severityBar = SEVERITY_BAR[r.severity as RiskSeverity] ?? "bg-caution";
   return (
     <Panel className="p-5 pl-6 relative overflow-hidden">
       <span
         className={cn(
           "absolute inset-y-4 left-0 w-[3px] rounded-full",
-          SEVERITY_BAR[r.severity],
+          severityBar,
         )}
       />
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -49,7 +49,7 @@ function RiskRow({ r }: { r: RiskItem }) {
             <h3 className="font-serif text-[16px] font-medium text-ink">
               {r.factor}
             </h3>
-            <StatusPill tone={SEVERITY_TONE[r.severity]} dot={false}>
+            <StatusPill tone={severityTone} dot={false}>
               {r.severity}
             </StatusPill>
           </div>
@@ -69,12 +69,13 @@ function RiskRow({ r }: { r: RiskItem }) {
   );
 }
 
-export default function RiskPage() {
+export default async function RiskPage() {
+  const [register, canWrite] = await Promise.all([getRiskRegister(), canWriteRisk()]);
   const mix = marketMix();
   const operating =
     allocationByClass().find((c) => c.assetClass === "Direct / Operating")?.pct ?? 0;
-  const elevated = RISK_REGISTER.filter((r) => r.severity === "Elevated");
-  const reviewQueue = RISK_REGISTER.filter((r) => REVIEW_STATUSES.has(r.status));
+  const elevated = register.filter((r) => r.severity === "Elevated");
+  const reviewQueue = register.filter((r) => REVIEW_STATUSES.has(r.status));
 
   return (
     <div>
@@ -91,7 +92,7 @@ export default function RiskPage() {
           <Stat
             label="Elevated factors"
             value={String(elevated.length)}
-            sub="Of 8 on the register"
+            sub={`Of ${register.length} on the register`}
             tone="critical"
           />
         </Panel>
@@ -121,6 +122,8 @@ export default function RiskPage() {
         </Panel>
       </div>
 
+      {canWrite ? <NewRiskForm /> : null}
+
       {/* Risk review queue */}
       <section className="mb-10">
         <SectionHeading
@@ -143,7 +146,7 @@ export default function RiskPage() {
           description="Reviewed each quarter at the Investment Committee."
         />
         <div className="space-y-3">
-          {RISK_REGISTER.map((r) => (
+          {register.map((r) => (
             <RiskRow key={r.id} r={r} />
           ))}
         </div>

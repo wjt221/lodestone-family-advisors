@@ -70,3 +70,55 @@ export async function getDocumentSignedUrl(
   if (error) return null;
   return data?.signedUrl ?? null;
 }
+
+export interface NewDocumentInput {
+  name: string;
+  category: string;
+  status: string;
+  owner: string;
+}
+
+/** Whether the current session may add/edit document records. */
+export async function canWriteDocuments(): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  const ctx = await getSessionContext();
+  return Boolean(ctx.clientId) && (ctx.role === "advisor" || ctx.role === "admin");
+}
+
+/**
+ * Creates a document METADATA record. Files are not uploaded in-app (the buckets
+ * are private and write-only via trusted server tooling — see SECURITY.md); this
+ * registers the record so it appears in the vault. Write authority is enforced
+ * here and, definitively, by RLS (`can_write_client`).
+ */
+export async function createDocument(input: NewDocumentInput): Promise<{ id: string }> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Adding documents requires secure mode (Supabase is not configured).");
+  }
+
+  const ctx = await getSessionContext();
+  const clientId = ctx.clientId;
+  if (!clientId) throw new Error("No accessible client to attach this document to.");
+  if (ctx.role !== "advisor" && ctx.role !== "admin") {
+    throw new Error("Only advisors or admins may add documents.");
+  }
+
+  const name = input.name.trim();
+  if (!name) throw new Error("A document name is required.");
+
+  const supabase = await createServerSupabase();
+  const res = await supabase
+    .from("documents")
+    .insert({
+      client_id: clientId,
+      name,
+      category: input.category.trim() || null,
+      owner: input.owner.trim() || null,
+      status: input.status.trim() || "Draft for Advisor Review",
+    })
+    .select("id")
+    .single();
+
+  if (res.error) throw new Error(res.error.message);
+  return { id: (res.data as { id: string }).id };
+}
