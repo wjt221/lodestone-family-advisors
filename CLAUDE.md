@@ -27,8 +27,28 @@ npm run lint     # ESLint check (must pass before committing)
 3. All figures must be labeled "illustrative" or "mock data."
 4. No investment advice language anywhere.
 
+## Data Layer (Supabase + mock fallback)
+The app has two modes, selected by `isSupabaseConfigured()` (`lib/supabase/config.ts`):
+- **Demo mode** (no env vars): mock data, no auth.
+- **Secure mode** (`NEXT_PUBLIC_SUPABASE_*` set): Supabase Auth + Postgres under RLS.
+
+Rules:
+- Pages must read through the data-access layer (`lib/data/*`), never branch on the
+  mode themselves. Modules: `clients`, `holdings`, `portfolio`, `meetings`,
+  `documents`, plus `session`. Each returns mock data in demo mode.
+- Supabase clients: `lib/supabase/client.ts` (browser, anon), `server.ts` (server,
+  anon + session), `admin.ts` (**service role, server-only, bypasses RLS — never
+  import client-side**). All marked `server-only` where applicable.
+- Auth: `/login`, `/auth/signout`; route protection in `proxy.ts` (Next 16 renamed
+  `middleware` → `proxy`) via `lib/supabase/middleware.ts`.
+- Schema + RLS: `supabase/migrations/001_initial_schema.sql`; demo data:
+  `supabase/seed.sql`. Security model in `SECURITY.md`; tests in
+  `supabase/RLS_TEST_PLAN.md`.
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser or prefix it `NEXT_PUBLIC_`.
+- Regenerate `lib/supabase/types.ts` with `supabase gen types` once a project exists.
+
 ## Mock Data Location
-All demo data lives in `lib/mock-data.ts`:
+All demo data lives in `lib/mock-data.ts` (the source for demo mode):
 - `CLIENT` — client name, advisor, AUM, entities
 - `HOLDINGS` — 8 holdings with allocation %, value, color
 - `PERFORMANCE` — YTD, 1Y, inception returns

@@ -3,11 +3,13 @@ import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section";
 import { Panel } from "@/components/panel";
 import { StatusPill } from "@/components/status-pill";
-import { MEETINGS, DECISION_LOG } from "@/lib/mock-data";
+import { DECISION_LOG } from "@/lib/mock-data";
+import { getMeetings } from "@/lib/data/meetings";
 
-export default function MeetingsPage() {
-  const upcoming = MEETINGS.filter((m) => m.status === "Scheduled");
-  const past = MEETINGS.filter((m) => m.status === "Completed");
+export default async function MeetingsPage() {
+  const meetings = await getMeetings();
+  const upcoming = meetings.filter((m) => m.status === "Scheduled");
+  const past = meetings.filter((m) => m.status === "Completed");
 
   return (
     <div>

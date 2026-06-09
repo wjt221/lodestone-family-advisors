@@ -22,6 +22,7 @@ documented and reviewed?
 
 - Node.js 18.18+ (Node 20+ recommended)
 - npm 9+
+- (Optional, for secure mode) a Supabase project
 
 ## Run it locally
 
@@ -32,6 +33,60 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) — `/` redirects to the Command Center.
+
+With no environment variables set, the app runs in **demo mode** (mock data, no
+login). To enable **secure mode** (Supabase auth + real data under RLS), see below.
+
+## Data modes
+
+| Mode | When | Behavior |
+|------|------|----------|
+| **Demo** | Supabase env vars absent | Mock data only, no auth. Default for local dev. |
+| **Secure** | `NEXT_PUBLIC_SUPABASE_*` set | Supabase Auth required; data read under Row-Level Security. |
+
+Pages read through a data-access layer (`lib/data/*`) that selects the source
+automatically — they never branch on the mode themselves. See
+[`SECURITY.md`](SECURITY.md) for the full security model.
+
+## Supabase setup (secure mode)
+
+1. **Create a project** at [supabase.com](https://supabase.com).
+2. **Apply the schema.** In the SQL editor (or `supabase db push`), run:
+   - `supabase/migrations/001_initial_schema.sql` — tables, roles, RLS policies.
+   - `supabase/seed.sql` — illustrative Atwater Family Office data.
+3. **Create users** under Authentication → Users, then link them to roles/clients
+   using the snippet at the bottom of `supabase/seed.sql` (make one `admin`, assign
+   an `advisor`, add a `client` user).
+4. **Configure local env.** Copy `.env.example` to `.env.local` and fill in the two
+   public values from Project Settings → API:
+
+   ```bash
+   cp .env.example .env.local
+   # NEXT_PUBLIC_SUPABASE_URL=...
+   # NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   # SUPABASE_SERVICE_ROLE_KEY=  (leave blank unless running server-side admin tasks)
+   ```
+
+5. **Create private Storage buckets** (do **not** make them public):
+   `client-documents`, `ips-documents`, `diligence-documents`. Add Storage RLS
+   policies before uploading real files (see `SECURITY.md`).
+6. `npm run dev` — you'll now be required to sign in at `/login`.
+
+> ⚠️ **Do not load real client data until the [RLS test plan](supabase/RLS_TEST_PLAN.md)
+> passes.** This build is security scaffolding and has not been penetration-tested.
+
+## Deploying to Vercel
+
+Set these in **Project → Settings → Environment Variables**:
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | from Supabase | public, safe in browser |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | from Supabase | public, protected by RLS |
+| `SUPABASE_SERVICE_ROLE_KEY` | from Supabase | **secret** — encrypted, server-only, un-prefixed; optional |
+
+Never prefix the service-role key with `NEXT_PUBLIC_` and never use it in client
+code. If it is not needed, leave it unset.
 
 ## Build & checks
 
@@ -75,7 +130,8 @@ npm run build    # production build — must pass
 
 ## Tech stack
 
-Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui · Recharts.
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui ·
+Recharts · Supabase (Auth + Postgres + RLS, optional).
 
 See [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) for the full spec, [`UX_REVIEW.md`](UX_REVIEW.md)
 for the refactor rationale, and [`CLAUDE.md`](CLAUDE.md) for build conventions.

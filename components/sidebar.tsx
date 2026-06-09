@@ -16,8 +16,10 @@ import {
   FolderOpen,
   Settings,
 } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CLIENT } from "@/lib/mock-data";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 interface NavItem {
   label: string;
@@ -154,6 +156,17 @@ export function Sidebar() {
           </div>
           <Settings className="ml-auto h-4 w-4 shrink-0 text-sidebar-foreground/40" />
         </Link>
+        {isSupabaseConfigured() && (
+          <form action="/auth/signout" method="post" className="mt-3">
+            <button
+              type="submit"
+              className="flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-[12px] text-sidebar-foreground/55 transition-colors hover:text-white"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </button>
+          </form>
+        )}
         <p className="mt-4 text-[10px] leading-relaxed text-sidebar-foreground/35">
           Illustrative data. For discussion only — not investment advice.
         </p>
