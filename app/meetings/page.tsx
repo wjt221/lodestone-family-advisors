@@ -4,10 +4,11 @@ import { SectionHeading } from "@/components/section";
 import { Panel } from "@/components/panel";
 import { StatusPill } from "@/components/status-pill";
 import { DECISION_LOG } from "@/lib/mock-data";
-import { getMeetings } from "@/lib/data/meetings";
+import { getMeetings, canWriteMeetings } from "@/lib/data/meetings";
+import { NewMeetingForm } from "./new-meeting-form";
 
 export default async function MeetingsPage() {
-  const meetings = await getMeetings();
+  const [meetings, canWrite] = await Promise.all([getMeetings(), canWriteMeetings()]);
   const upcoming = meetings.filter((m) => m.status === "Scheduled");
   const past = meetings.filter((m) => m.status === "Completed");
 
@@ -23,7 +24,10 @@ export default async function MeetingsPage() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.2fr_1fr]">
         {/* Meetings */}
         <div>
-          <SectionHeading eyebrow="Schedule" title="Meetings" />
+          <div className="flex items-center justify-between gap-3">
+            <SectionHeading eyebrow="Schedule" title="Meetings" />
+            {canWrite ? <NewMeetingForm /> : null}
+          </div>
           <div className="space-y-3">
             {upcoming.map((m) => (
               <Panel key={m.id} className="p-5 pl-6 relative overflow-hidden">
