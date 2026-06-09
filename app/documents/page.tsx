@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section";
 import { Panel } from "@/components/panel";
 import { StatusPill, toneForLabel } from "@/components/status-pill";
-import { DOCUMENTS } from "@/lib/mock-data";
+import { getDocuments } from "@/lib/data/documents";
 
 const CATEGORY_ORDER = [
   "Policy",
@@ -13,13 +13,20 @@ const CATEGORY_ORDER = [
   "Planning",
 ];
 
-export default function DocumentsPage() {
-  const byCategory = CATEGORY_ORDER.map((cat) => ({
-    cat,
-    docs: DOCUMENTS.filter((d) => d.category === cat),
-  })).filter((g) => g.docs.length > 0);
+export default async function DocumentsPage() {
+  const documents = await getDocuments();
 
-  const drafts = DOCUMENTS.filter(
+  const known = CATEGORY_ORDER.map((cat) => ({
+    cat,
+    docs: documents.filter((d) => d.category === cat),
+  }));
+  const otherDocs = documents.filter((d) => !CATEGORY_ORDER.includes(d.category));
+  const byCategory = [
+    ...known,
+    ...(otherDocs.length ? [{ cat: "Other", docs: otherDocs }] : []),
+  ].filter((g) => g.docs.length > 0);
+
+  const drafts = documents.filter(
     (d) => d.status === "Draft for Advisor Review" || d.status === "In Review",
   ).length;
 
