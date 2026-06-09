@@ -1,8 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Header } from "@/components/header";
-import { MEETINGS } from "@/lib/mock-data";
-import { Calendar, Users } from "lucide-react";
+import { CalendarDays, Users, Gavel } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { SectionHeading } from "@/components/section";
+import { Panel } from "@/components/panel";
+import { StatusPill } from "@/components/status-pill";
+import { MEETINGS, DECISION_LOG } from "@/lib/mock-data";
 
 export default function MeetingsPage() {
   const upcoming = MEETINGS.filter((m) => m.status === "Scheduled");
@@ -10,83 +11,121 @@ export default function MeetingsPage() {
 
   return (
     <div>
-      <Header
-        title="Meetings"
-        subtitle="Advisory meeting schedule and notes"
+      <PageHeader
+        eyebrow="Governance Cadence"
+        title="Decisions, made and documented"
+        lede="A standing meeting rhythm and a written record of every decision is how a family avoids ad-hoc, reactive choices. This is the cadence that turns analysis into disciplined action."
+        status={{ label: "Governance Improvement", tone: "info" }}
       />
 
-      <div className="space-y-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.2fr_1fr]">
+        {/* Meetings */}
         <div>
-          <h2 className="text-sm font-semibold uppercase text-slate-500 tracking-wide mb-3">
-            Upcoming ({upcoming.length})
-          </h2>
-          <div className="space-y-4">
+          <SectionHeading eyebrow="Schedule" title="Meetings" />
+          <div className="space-y-3">
             {upcoming.map((m) => (
-              <Card key={m.id} className="border-0 shadow-sm border-l-4 border-l-blue-500">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-base font-semibold">
+              <Panel key={m.id} className="p-5 pl-6 relative overflow-hidden">
+                <span className="absolute inset-y-4 left-0 w-[3px] rounded-full bg-brand" />
+                <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 className="font-serif text-[16px] font-medium text-ink">
                       {m.title}
-                    </CardTitle>
-                    <Badge className="bg-blue-100 text-blue-800 border-0 text-xs">
-                      {m.status}
-                    </Badge>
+                    </h3>
+                    <div className="mt-1 flex items-center gap-2 text-[12.5px] text-ink-muted">
+                      <CalendarDays className="h-3.5 w-3.5 text-brand" />
+                      {m.date} · {m.time}
+                    </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Calendar className="w-4 h-4" />
-                    <span>{m.date} · {m.time}</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-slate-600">
-                    <Users className="w-4 h-4 mt-0.5" />
-                    <span>{m.attendees.join(", ")}</span>
-                  </div>
-                  {m.notes && (
-                    <p className="text-slate-500 text-xs mt-2 bg-slate-50 p-2 rounded">
-                      {m.notes}
+                  <StatusPill tone="info" dot={false}>
+                    {m.type}
+                  </StatusPill>
+                </div>
+                <div className="mb-3 flex items-start gap-2 text-[12.5px] text-ink-muted">
+                  <Users className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  {m.attendees.join(" · ")}
+                </div>
+                <div className="border-t border-hairline pt-3">
+                  <p className="eyebrow mb-2">Agenda</p>
+                  <ul className="space-y-1">
+                    {m.agenda.map((a) => (
+                      <li
+                        key={a}
+                        className="flex items-start gap-2 text-[13px] text-ink"
+                      >
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand" />
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Panel>
+            ))}
+          </div>
+
+          <p className="eyebrow mb-3 mt-6">Past</p>
+          <div className="space-y-3">
+            {past.map((m) => (
+              <Panel key={m.id} className="p-5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-[14px] font-medium text-ink">{m.title}</h3>
+                    <p className="mt-0.5 text-[12px] text-ink-muted">
+                      {m.date} · {m.type}
                     </p>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
+                  <StatusPill tone="neutral" dot={false}>
+                    Completed
+                  </StatusPill>
+                </div>
+                <ul className="mt-2 space-y-1">
+                  {m.agenda.map((a) => (
+                    <li key={a} className="text-[12.5px] text-ink-muted">
+                      • {a}
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
             ))}
           </div>
         </div>
 
+        {/* Decision log */}
         <div>
-          <h2 className="text-sm font-semibold uppercase text-slate-500 tracking-wide mb-3">
-            Past Meetings ({past.length})
-          </h2>
-          <div className="space-y-4">
-            {past.map((m) => (
-              <Card key={m.id} className="border-0 shadow-sm opacity-75">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-base font-semibold text-slate-700">
-                      {m.title}
-                    </CardTitle>
-                    <Badge
-                      variant="secondary"
-                      className="text-xs bg-slate-100 text-slate-600"
-                    >
-                      {m.status}
-                    </Badge>
+          <SectionHeading eyebrow="Record" title="Decision log" />
+          <Panel inset className="p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Gavel className="h-4 w-4 text-brand" />
+              <p className="text-[13px] text-ink-muted">
+                Documented Investment Committee and advisor decisions.
+              </p>
+            </div>
+            <ol className="relative space-y-5 border-l border-hairline pl-5">
+              {DECISION_LOG.map((d) => (
+                <li key={d.id} className="relative">
+                  <span className="absolute -left-[27px] top-1 h-2.5 w-2.5 rounded-full border-2 border-card bg-brand" />
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] uppercase tracking-wide text-ink-muted">
+                      {d.date} · {d.body}
+                    </p>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-1 text-sm text-slate-600">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>{m.date} · {m.time}</span>
-                  </div>
-                  {m.notes && (
-                    <p className="text-xs text-slate-500 mt-1">{m.notes}</p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  <p className="mt-1 text-[14px] font-medium text-ink">{d.topic}</p>
+                  <p className="mt-0.5 text-[12.5px] font-medium text-brand">
+                    {d.decision}
+                  </p>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-ink-muted">
+                    {d.rationale}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </Panel>
         </div>
       </div>
+
+      <p className="mt-10 border-t border-hairline pt-5 text-[11px] leading-relaxed text-ink-muted">
+        Meetings and decisions shown are illustrative. Nothing here is investment
+        advice. The decision log is a governance record, not a recommendation.
+      </p>
     </div>
   );
 }

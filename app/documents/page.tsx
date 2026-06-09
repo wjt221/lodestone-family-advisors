@@ -1,78 +1,86 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Header } from "@/components/header";
-import { DOCUMENTS } from "@/lib/mock-data";
 import { FileText, Download } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { SectionHeading } from "@/components/section";
+import { Panel } from "@/components/panel";
+import { StatusPill, toneForLabel } from "@/components/status-pill";
+import { DOCUMENTS } from "@/lib/mock-data";
 
-const STATUS_STYLES: Record<string, string> = {
-  Approved: "bg-green-100 text-green-800",
-  Final: "bg-blue-100 text-blue-800",
-  "Draft for Advisor Review": "bg-amber-100 text-amber-800",
-};
-
-const TYPE_ICONS: Record<string, string> = {
-  IPS: "📋",
-  Report: "📊",
-  Diligence: "🔍",
-  Planning: "📌",
-};
+const CATEGORY_ORDER = [
+  "Policy",
+  "Governance",
+  "Diligence",
+  "Reporting",
+  "Planning",
+];
 
 export default function DocumentsPage() {
+  const byCategory = CATEGORY_ORDER.map((cat) => ({
+    cat,
+    docs: DOCUMENTS.filter((d) => d.category === cat),
+  })).filter((g) => g.docs.length > 0);
+
+  const drafts = DOCUMENTS.filter(
+    (d) => d.status === "Draft for Advisor Review" || d.status === "In Review",
+  ).length;
+
   return (
     <div>
-      <Header
-        title="Document Vault"
-        subtitle="Secure document library for the Atwater Family Office"
+      <PageHeader
+        eyebrow="Document Vault"
+        title="The family's institutional memory"
+        lede="Policies, diligence memos, reporting, and governance records in one place — so decisions are documented, reviewable, and never lost between meetings."
+        status={{ label: `${drafts} in review`, tone: "caution" }}
       />
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">All Documents</CardTitle>
-          <p className="text-xs text-slate-400">Illustrative document list only</p>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y divide-slate-100">
-            {DOCUMENTS.map((d) => (
-              <div
-                key={d.id}
-                className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-lg">
-                    {TYPE_ICONS[d.type] ?? "📄"}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{d.name}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {d.type} · {d.date}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      STATUS_STYLES[d.status] ?? "bg-slate-100 text-slate-700"
-                    }`}
+      <div className="space-y-8">
+        {byCategory.map((group) => (
+          <section key={group.cat}>
+            <SectionHeading eyebrow="Category" title={group.cat} />
+            <Panel inset>
+              <ul className="divide-y divide-hairline">
+                {group.docs.map((d) => (
+                  <li
+                    key={d.id}
+                    className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-secondary/40"
                   >
-                    {d.status}
-                  </span>
-                  <button className="text-slate-400 hover:text-slate-600 transition-colors">
-                    <Download className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-        <div className="flex items-start gap-2">
-          <FileText className="w-4 h-4 mt-0.5 shrink-0" />
-          <p>
-            Document vault is for reference only. All documents labeled &quot;Draft for Advisor Review&quot; have not been finalized. Please contact your advisor before acting on any document contents.
-          </p>
-        </div>
+                    <div className="flex min-w-0 items-center gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-hairline bg-secondary/50 text-brand">
+                        <FileText className="h-[18px] w-[18px]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-[14px] font-medium text-ink">
+                          {d.name}
+                        </p>
+                        <p className="text-[12px] text-ink-muted">
+                          Updated {d.updated} · {d.owner}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-4">
+                      <StatusPill tone={toneForLabel(d.status)} dot={false}>
+                        {d.status}
+                      </StatusPill>
+                      <button
+                        className="text-ink-muted/60 transition-colors hover:text-brand"
+                        aria-label={`Download ${d.name}`}
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          </section>
+        ))}
       </div>
+
+      <p className="mt-10 border-t border-hairline pt-5 text-[11px] leading-relaxed text-ink-muted">
+        The document vault is illustrative and for reference only. Items marked
+        &ldquo;Draft for Advisor Review&rdquo; or &ldquo;In Review&rdquo; are not
+        final. Nothing here is investment advice — contact your advisor before acting
+        on any document.
+      </p>
     </div>
   );
 }

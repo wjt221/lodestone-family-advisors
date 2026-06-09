@@ -1,81 +1,70 @@
 "use client";
 
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
-import { HOLDINGS } from "@/lib/mock-data";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { allocationByClass, fmtMillions, fmtPct } from "@/lib/calculations";
+import { CLIENT } from "@/lib/mock-data";
 
-function formatCurrency(value: number) {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  return `$${(value / 1_000).toFixed(0)}K`;
-}
-
-interface TooltipPayloadItem {
+interface TooltipItem {
   name: string;
   value: number;
-  payload: { value: number; name: string; color: string };
+  payload: { value: number; rawValue: number };
 }
 
-function CustomTooltip({
+function ChartTooltip({
   active,
   payload,
 }: {
   active?: boolean;
-  payload?: TooltipPayloadItem[];
+  payload?: TooltipItem[];
 }) {
-  if (active && payload && payload.length) {
-    const d = payload[0];
-    const holding = HOLDINGS.find((h) => h.name === d.name);
-    return (
-      <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-sm">
-        <p className="font-semibold text-slate-900 mb-1">{d.name}</p>
-        <p className="text-slate-600">{d.value}% of portfolio</p>
-        {holding && (
-          <p className="text-slate-600">{formatCurrency(holding.value)}</p>
-        )}
-      </div>
-    );
-  }
-  return null;
+  if (!active || !payload?.length) return null;
+  const d = payload[0];
+  return (
+    <div className="rounded-lg border border-hairline bg-card px-3 py-2 shadow-sm">
+      <p className="text-[12px] font-medium text-ink">{d.name}</p>
+      <p className="tnum text-[12px] text-ink-muted">
+        {fmtPct(d.value)} · {fmtMillions(d.payload.rawValue, 2)}
+      </p>
+    </div>
+  );
 }
 
-export function AllocationChart() {
-  const data = HOLDINGS.map((h) => ({
-    name: h.name,
-    value: h.allocationPct,
-    color: h.color,
+export function AllocationChart({ height = 260 }: { height?: number }) {
+  const data = allocationByClass().map((c) => ({
+    name: c.assetClass,
+    value: c.pct,
+    rawValue: c.value,
+    color: c.color,
   }));
 
   return (
-    <div className="w-full h-72">
+    <div className="relative w-full" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
-            innerRadius={70}
-            outerRadius={110}
-            paddingAngle={2}
+            innerRadius="68%"
+            outerRadius="100%"
+            paddingAngle={1.5}
             dataKey="value"
+            stroke="var(--card)"
+            strokeWidth={2}
           >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
+            {data.map((entry) => (
+              <Cell key={entry.name} fill={entry.color} />
             ))}
           </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            formatter={(value) => (
-              <span className="text-xs text-slate-600">{value}</span>
-            )}
-          />
+          <Tooltip content={<ChartTooltip />} />
         </PieChart>
       </ResponsiveContainer>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <p className="eyebrow">Total AUM</p>
+        <p className="tnum font-serif text-[28px] font-medium leading-none text-ink">
+          {CLIENT.aum >= 1_000_000 ? `$${(CLIENT.aum / 1_000_000).toFixed(1)}M` : ""}
+        </p>
+      </div>
     </div>
   );
 }

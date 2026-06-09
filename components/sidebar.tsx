@@ -6,17 +6,18 @@ import {
   LayoutDashboard,
   Compass,
   FileText,
-  PieChart,
-  Droplets,
+  Scale,
   ShieldAlert,
   Briefcase,
+  Layers,
   Search,
+  Droplets,
   CalendarDays,
   FolderOpen,
   Settings,
-  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CLIENT } from "@/lib/mock-data";
 
 interface NavItem {
   label: string;
@@ -32,89 +33,97 @@ interface NavGroup {
 const NAV_GROUPS: NavGroup[] = [
   {
     title: "Overview",
-    items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    ],
+    items: [{ label: "Command Center", href: "/dashboard", icon: LayoutDashboard }],
   },
   {
-    title: "Strategy",
+    title: "Strategy & Policy",
     items: [
       { label: "Strategy", href: "/strategy", icon: Compass },
-      { label: "IPS", href: "/ips", icon: FileText },
-      { label: "Allocation", href: "/allocation", icon: PieChart },
-      { label: "Risk", href: "/risk", icon: ShieldAlert },
+      { label: "Policy Statement", href: "/ips", icon: FileText },
+      { label: "Allocation", href: "/allocation", icon: Scale },
+      { label: "Risk Register", href: "/risk", icon: ShieldAlert },
     ],
   },
   {
     title: "Portfolio",
     items: [
       { label: "Portfolio", href: "/portfolio", icon: Briefcase },
-      { label: "Investments", href: "/investments", icon: TrendingUp },
-      { label: "Due Diligence", href: "/diligence", icon: Search },
       { label: "Liquidity", href: "/liquidity", icon: Droplets },
+      { label: "Pipeline", href: "/investments", icon: Layers },
+      { label: "Diligence", href: "/diligence", icon: Search },
     ],
   },
   {
-    title: "Advisory",
+    title: "Governance",
     items: [
       { label: "Meetings", href: "/meetings", icon: CalendarDays },
       { label: "Documents", href: "/documents", icon: FolderOpen },
     ],
   },
-  {
-    title: "Account",
-    items: [
-      { label: "Settings", href: "/settings", icon: Settings },
-    ],
-  },
 ];
+
+function isActive(pathname: string, href: string) {
+  if (href === "/dashboard") return pathname === "/dashboard";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-slate-900 text-slate-100 shrink-0">
-      {/* Logo */}
-      <div className="px-6 py-5 border-b border-slate-700">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 text-white font-bold text-sm">
-            LFA
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
+      {/* Wordmark */}
+      <div className="px-6 pb-5 pt-6">
+        <Link href="/dashboard" className="block">
+          <div className="flex items-center gap-2">
+            <span className="font-serif text-lg font-medium tracking-tight text-white">
+              Lodestone
+            </span>
+            <span className="h-4 w-px bg-sidebar-border" />
+            <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-brand">
+              Family Advisors
+            </span>
           </div>
-          <div>
-            <div className="font-semibold text-white text-sm leading-tight">
-              Lodestone Family
-            </div>
-            <div className="text-xs text-slate-400 leading-tight">
-              Investment OS
-            </div>
-          </div>
-        </div>
+          <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-sidebar-foreground/45">
+            Investment OS
+          </p>
+        </Link>
       </div>
 
-      {/* Nav groups */}
-      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+      <div className="mx-6 h-px bg-sidebar-border" />
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 py-5">
         {NAV_GROUPS.map((group) => (
-          <div key={group.title}>
-            <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+          <div key={group.title} className="mb-6">
+            <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/35">
               {group.title}
             </p>
             <ul className="space-y-0.5">
               {group.items.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                const active = isActive(pathname, item.href);
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
                       className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                        isActive
-                          ? "bg-blue-600 text-white font-medium"
-                          : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                        "group relative flex items-center gap-3 rounded-md px-3 py-2 text-[13px] transition-colors",
+                        active
+                          ? "bg-sidebar-accent text-white"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-white",
                       )}
                     >
-                      <item.icon className="w-4 h-4 shrink-0" />
+                      {active && (
+                        <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-brand" />
+                      )}
+                      <item.icon
+                        className={cn(
+                          "h-[18px] w-[18px] shrink-0",
+                          active
+                            ? "text-brand"
+                            : "text-sidebar-foreground/45 group-hover:text-sidebar-foreground/70",
+                        )}
+                      />
                       {item.label}
                     </Link>
                   </li>
@@ -125,10 +134,29 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="px-6 py-4 border-t border-slate-700 text-xs text-slate-500">
-        <p>Illustrative data only.</p>
-        <p>Not investment advice.</p>
+      {/* Client / advisor footer */}
+      <div className="mx-6 h-px bg-sidebar-border" />
+      <div className="px-6 py-5">
+        <Link
+          href="/settings"
+          className="flex items-center gap-3 rounded-md py-1 transition-opacity hover:opacity-80"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[13px] font-medium text-brand">
+            SC
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-medium text-white">
+              {CLIENT.advisor}
+            </p>
+            <p className="truncate text-[11px] text-sidebar-foreground/45">
+              Lead Advisor
+            </p>
+          </div>
+          <Settings className="ml-auto h-4 w-4 shrink-0 text-sidebar-foreground/40" />
+        </Link>
+        <p className="mt-4 text-[10px] leading-relaxed text-sidebar-foreground/35">
+          Illustrative data. For discussion only — not investment advice.
+        </p>
       </div>
     </aside>
   );

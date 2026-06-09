@@ -1,153 +1,259 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Header } from "@/components/header";
-import { ComplianceBadge } from "@/components/compliance-badge";
-import { HOLDINGS, CLIENT, IPS_SUMMARY } from "@/lib/mock-data";
+import { PageHeader } from "@/components/page-header";
+import { SectionHeading } from "@/components/section";
+import { Panel, PanelHeader } from "@/components/panel";
+import { Stat } from "@/components/stat";
+import { StatusPill } from "@/components/status-pill";
+import {
+  liquidityReserve,
+  liquidityCoverage,
+  totalUnfunded,
+  fmtMillions,
+  fmtPct,
+} from "@/lib/calculations";
+import { LIQUIDITY_NEEDS, CAPITAL_CALLS } from "@/lib/mock-data";
 
-function formatCurrency(n: number) {
-  return `$${(n / 1_000_000).toFixed(2)}M`;
-}
-
-const LIQUIDITY_TIERS: Record<string, { tier: string; days: string }> = {
-  cash: { tier: "T0", days: "Immediately available" },
-  muni: { tier: "T1", days: "1–5 business days" },
-  equity: { tier: "T1", days: "T+2 settlement" },
-  credit: { tier: "T3", days: "90–180 day notice" },
-  industrial: { tier: "T4", days: "Illiquid / multi-year" },
-  realestate: { tier: "T3", days: "6–24 month hold" },
-  venture: { tier: "T4", days: "Illiquid / fund life" },
-  roofing: { tier: "T4", days: "Illiquid / multi-year" },
-};
-
-const TIER_COLORS: Record<string, string> = {
-  T0: "bg-green-100 text-green-800",
-  T1: "bg-blue-100 text-blue-800",
-  T3: "bg-amber-100 text-amber-800",
-  T4: "bg-red-100 text-red-800",
-};
+const SEG = [
+  { key: "reserve", label: "Cash reserve", color: "var(--positive)" },
+  { key: "fixed", label: "Fixed income", color: "var(--info)" },
+  { key: "equity", label: "Public equity", color: "var(--caution)" },
+] as const;
 
 export default function LiquidityPage() {
-  const liquidAssets = HOLDINGS.filter((h) =>
-    ["cash", "muni", "equity"].includes(h.id)
-  );
-  const liquidValue = liquidAssets.reduce((s, h) => s + h.value, 0);
-  const liquidPct = ((liquidValue / CLIENT.aum) * 100).toFixed(1);
-  const requirement = parseFloat(IPS_SUMMARY.liquidityNeeds.match(/\d+/)![0]);
+  const reserve = liquidityReserve();
+  const coverage = liquidityCoverage();
 
   return (
     <div>
-      <Header
-        title="Liquidity Analysis"
-        subtitle="Tiered liquidity profile across all holdings"
-        showCompliance
-        complianceVariant="discussion"
+      <PageHeader
+        eyebrow="Liquidity Discipline"
+        title="Coverage that prevents forced selling"
+        lede="Liquidity planning is how Lodestone keeps the family from selling long-horizon assets at the wrong time. We map forward obligations against the sources available to meet them, by reliability of access."
+        status={{ label: "Discussion Point", tone: "info" }}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-slate-500">
-              Liquid Assets (T0–T1)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-slate-900">
-              {formatCurrency(liquidValue)}
-            </p>
-            <p className="text-sm text-slate-500 mt-1">{liquidPct}% of AUM</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-slate-500">
-              IPS Liquidity Floor
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-slate-900">{requirement}%</p>
-            <p className="text-sm text-slate-500 mt-1">Minimum liquid requirement</p>
-          </CardContent>
-        </Card>
-
-        <Card
-          className={`border-0 shadow-sm ${
-            parseFloat(liquidPct) >= requirement ? "bg-green-50" : "bg-red-50"
-          }`}
-        >
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-slate-500">
-              Compliance Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p
-              className={`text-xl font-bold ${
-                parseFloat(liquidPct) >= requirement
-                  ? "text-green-700"
-                  : "text-red-700"
-              }`}
-            >
-              {parseFloat(liquidPct) >= requirement
-                ? "Within IPS Guideline"
-                : "Below IPS Guideline"}
-            </p>
-            <p className="text-xs text-slate-500 mt-1">Discussion Point</p>
-          </CardContent>
-        </Card>
+      {/* Reserve status */}
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Panel className="p-5">
+          <Stat
+            label="Dedicated reserve"
+            value={fmtMillions(reserve.reserve)}
+            sub={`${fmtPct(reserve.pct)} of AUM`}
+            tone="critical"
+          />
+        </Panel>
+        <Panel className="p-5">
+          <Stat
+            label="Policy reserve floor"
+            value={`${reserve.min}–${reserve.max}%`}
+            sub={`Target ${reserve.target}%`}
+          />
+        </Panel>
+        <Panel className="p-5">
+          <p className="eyebrow mb-2">Reserve status</p>
+          <StatusPill>{reserve.status}</StatusPill>
+          <p className="mt-2.5 text-[12px] leading-relaxed text-ink-muted">
+            Reserve sits below the proposed floor. Review before new illiquid
+            commitments.
+          </p>
+        </Panel>
+        <Panel className="p-5">
+          <Stat
+            label="Unfunded commitments"
+            value={fmtMillions(totalUnfunded())}
+            sub="Across 3 private funds"
+            tone="caution"
+          />
+        </Panel>
       </div>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">
-              Liquidity by Holding
-            </CardTitle>
-            <ComplianceBadge variant="discussion" />
+      {/* Coverage by horizon */}
+      <section className="mb-10">
+        <SectionHeading
+          eyebrow="Forward coverage"
+          title="Obligations vs. sources, by horizon"
+          description="Each bar represents that horizon's total obligations, filled by the sources available to meet them. Reaching into public equity signals potential forced-selling risk."
+        />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {coverage.map((h) => {
+            const segReserve = h.reserveCover;
+            const segFixed = h.liquidCover - h.reserveCover;
+            const segEquity = Math.max(0, h.need - h.liquidCover);
+            const widths = {
+              reserve: (segReserve / h.need) * 100,
+              fixed: (segFixed / h.need) * 100,
+              equity: (segEquity / h.need) * 100,
+            };
+            const needsEquity = segEquity > 0;
+            return (
+              <Panel key={h.horizon} className="p-5">
+                <div className="mb-1 flex items-baseline justify-between">
+                  <h3 className="font-serif text-[17px] font-medium text-ink">
+                    {h.horizon}
+                  </h3>
+                  <span className="tnum text-[13px] font-medium text-ink-muted">
+                    {h.coverageRatio.toFixed(1)}× liquid
+                  </span>
+                </div>
+                <p className="tnum mb-4 text-[13px] text-ink-muted">
+                  {fmtMillions(h.need)} of obligations
+                </p>
+
+                <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    style={{ width: `${widths.reserve}%`, background: SEG[0].color }}
+                  />
+                  <div
+                    style={{ width: `${widths.fixed}%`, background: SEG[1].color }}
+                  />
+                  <div
+                    style={{ width: `${widths.equity}%`, background: SEG[2].color }}
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <StatusPill tone={needsEquity ? "caution" : "positive"} dot={false}>
+                    {needsEquity
+                      ? "Requires public equity"
+                      : "Covered by reserve + fixed income"}
+                  </StatusPill>
+                  {needsEquity && (
+                    <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
+                      Meeting this horizon would require drawing on public equity —
+                      a behavioral risk to manage in a drawdown.
+                    </p>
+                  )}
+                </div>
+              </Panel>
+            );
+          })}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+          {SEG.map((s) => (
+            <span key={s.key} className="flex items-center gap-2 text-[12px] text-ink-muted">
+              <span
+                className="h-2.5 w-2.5 rounded-[3px]"
+                style={{ background: s.color }}
+              />
+              {s.label}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* Obligations & capital calls */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Panel inset>
+          <div className="px-6 pt-6">
+            <PanelHeader
+              title="Forward obligations"
+              description="Cumulative, by horizon."
+            />
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
+          <table className="w-full text-[13px]">
             <thead>
-              <tr className="border-b border-slate-100 text-xs text-slate-500 uppercase tracking-wide">
-                <th className="text-left px-6 py-3 font-medium">Holding</th>
-                <th className="text-left px-6 py-3 font-medium">Tier</th>
-                <th className="text-left px-6 py-3 font-medium">Liquidity</th>
-                <th className="text-right px-6 py-3 font-medium">Value</th>
+              <tr className="border-y border-hairline">
+                <th className="px-6 py-2.5 text-left font-medium text-ink-muted">
+                  Obligation
+                </th>
+                <th className="tnum px-3 py-2.5 text-right font-medium text-ink-muted">
+                  12-mo
+                </th>
+                <th className="tnum px-3 py-2.5 text-right font-medium text-ink-muted">
+                  24-mo
+                </th>
+                <th className="tnum px-6 py-2.5 text-right font-medium text-ink-muted">
+                  36-mo
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
-              {HOLDINGS.map((h) => {
-                const liq = LIQUIDITY_TIERS[h.id];
-                return (
-                  <tr key={h.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-3 font-medium text-slate-900">
-                      {h.name}
-                    </td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          TIER_COLORS[liq.tier]
-                        }`}
-                      >
-                        {liq.tier}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-slate-600 text-xs">
-                      {liq.days}
-                    </td>
-                    <td className="px-6 py-3 text-right font-mono text-slate-900">
-                      {formatCurrency(h.value)}
-                    </td>
-                  </tr>
-                );
-              })}
+            <tbody className="divide-y divide-hairline">
+              {LIQUIDITY_NEEDS.map((n) => (
+                <tr key={n.id}>
+                  <td className="px-6 py-3">
+                    <p className="font-medium text-ink">{n.label}</p>
+                    <p className="text-[11.5px] text-ink-muted">{n.description}</p>
+                  </td>
+                  <td className="tnum px-3 py-3 text-right text-ink">
+                    {fmtMillions(n.m12, 2)}
+                  </td>
+                  <td className="tnum px-3 py-3 text-right text-ink">
+                    {fmtMillions(n.m24, 2)}
+                  </td>
+                  <td className="tnum px-6 py-3 text-right text-ink">
+                    {fmtMillions(n.m36, 2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-hairline bg-secondary/40">
+                <td className="px-6 py-3 font-medium text-ink">Total</td>
+                {(["m12", "m24", "m36"] as const).map((k, i) => (
+                  <td
+                    key={k}
+                    className={`tnum py-3 text-right font-semibold text-ink ${
+                      i === 2 ? "px-6" : "px-3"
+                    }`}
+                  >
+                    {fmtMillions(
+                      LIQUIDITY_NEEDS.reduce((s, n) => s + n[k], 0),
+                      2,
+                    )}
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          </table>
+        </Panel>
+
+        <Panel inset>
+          <div className="px-6 pt-6">
+            <PanelHeader
+              title="Capital call planning"
+              description="Unfunded commitments and expected drawdown windows."
+            />
+          </div>
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-y border-hairline">
+                <th className="px-6 py-2.5 text-left font-medium text-ink-muted">
+                  Fund
+                </th>
+                <th className="tnum px-3 py-2.5 text-right font-medium text-ink-muted">
+                  Unfunded
+                </th>
+                <th className="px-6 py-2.5 text-right font-medium text-ink-muted">
+                  Window
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-hairline">
+              {CAPITAL_CALLS.map((c) => (
+                <tr key={c.fund}>
+                  <td className="px-6 py-3">
+                    <p className="font-medium text-ink">{c.fund}</p>
+                    <p className="tnum text-[11.5px] text-ink-muted">
+                      {fmtMillions(c.called, 2)} of {fmtMillions(c.commitment, 1)}{" "}
+                      called
+                    </p>
+                  </td>
+                  <td className="tnum px-3 py-3 text-right font-medium text-ink">
+                    {fmtMillions(c.unfunded, 2)}
+                  </td>
+                  <td className="px-6 py-3 text-right text-[12px] text-ink-muted">
+                    {c.expectedWindow}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
-        </CardContent>
-      </Card>
+        </Panel>
+      </div>
 
-      <p className="mt-4 text-xs text-slate-400">
-        Discussion Point — liquidity tiers are illustrative. Requires advisor review.
+      <p className="mt-10 border-t border-hairline pt-5 text-[11px] leading-relaxed text-ink-muted">
+        Liquidity figures, obligations, and call windows are illustrative and for
+        discussion only. This is not investment advice. Reserve sizing and any
+        portfolio changes require advisor and Investment Committee review.
       </p>
     </div>
   );

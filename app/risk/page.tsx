@@ -1,137 +1,158 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Header } from "@/components/header";
-import { ComplianceBadge } from "@/components/compliance-badge";
-import { IPS_SUMMARY, HOLDINGS } from "@/lib/mock-data";
+import { PageHeader } from "@/components/page-header";
+import { SectionHeading } from "@/components/section";
+import { Panel } from "@/components/panel";
+import { Stat } from "@/components/stat";
+import { StatusPill, toneForLabel } from "@/components/status-pill";
+import { cn } from "@/lib/utils";
+import {
+  RISK_REGISTER,
+  type RiskSeverity,
+  type RiskItem,
+} from "@/lib/mock-data";
+import {
+  illiquidPct,
+  marketMix,
+  allocationByClass,
+  fmtPct,
+} from "@/lib/calculations";
 
-const RISK_FACTORS = [
-  {
-    factor: "Market Risk",
-    score: 65,
-    description: "Exposure to public equity and bond market volatility",
-    category: "Medium-High",
-  },
-  {
-    factor: "Liquidity Risk",
-    score: 45,
-    description: "33% of assets in illiquid/long-hold investments",
-    category: "Medium",
-  },
-  {
-    factor: "Concentration Risk",
-    score: 30,
-    description: "Portfolio spread across 8 distinct holdings",
-    category: "Low-Medium",
-  },
-  {
-    factor: "Credit Risk",
-    score: 40,
-    description: "Private credit and municipal bond exposure",
-    category: "Medium",
-  },
-  {
-    factor: "Manager Risk",
-    score: 35,
-    description: "Dependence on external fund managers",
-    category: "Low-Medium",
-  },
-];
-
-const SCORE_COLORS: Record<string, string> = {
-  "Low-Medium": "text-green-700",
-  Medium: "text-amber-700",
-  "Medium-High": "text-orange-700",
-  High: "text-red-700",
+const SEVERITY_TONE: Record<RiskSeverity, "critical" | "caution" | "info"> = {
+  Elevated: "critical",
+  Moderate: "caution",
+  Low: "info",
 };
 
+const SEVERITY_BAR: Record<RiskSeverity, string> = {
+  Elevated: "bg-critical",
+  Moderate: "bg-caution",
+  Low: "bg-info",
+};
+
+const REVIEW_STATUSES = new Set([
+  "Advisor Review Required",
+  "Risk to Review",
+  "Diligence in Progress",
+]);
+
+function RiskRow({ r }: { r: RiskItem }) {
+  return (
+    <Panel className="p-5 pl-6 relative overflow-hidden">
+      <span
+        className={cn(
+          "absolute inset-y-4 left-0 w-[3px] rounded-full",
+          SEVERITY_BAR[r.severity],
+        )}
+      />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="lg:max-w-xl">
+          <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
+            <h3 className="font-serif text-[16px] font-medium text-ink">
+              {r.factor}
+            </h3>
+            <StatusPill tone={SEVERITY_TONE[r.severity]} dot={false}>
+              {r.severity}
+            </StatusPill>
+          </div>
+          <p className="text-[13px] leading-relaxed text-ink-muted">
+            {r.observation}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col gap-2 lg:w-64 lg:items-end">
+          <StatusPill tone={toneForLabel(r.status)}>{r.status}</StatusPill>
+          <p className="text-[12px] text-ink-muted lg:text-right">{r.exposure}</p>
+          <p className="text-[11px] text-ink-muted/70 lg:text-right">
+            Owner · {r.owner}
+          </p>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 export default function RiskPage() {
-  const illiquidPct = HOLDINGS.filter((h) =>
-    ["credit", "industrial", "realestate", "venture", "roofing"].includes(h.id)
-  ).reduce((s, h) => s + h.allocationPct, 0);
+  const mix = marketMix();
+  const operating =
+    allocationByClass().find((c) => c.assetClass === "Direct / Operating")?.pct ?? 0;
+  const elevated = RISK_REGISTER.filter((r) => r.severity === "Elevated");
+  const reviewQueue = RISK_REGISTER.filter((r) => REVIEW_STATUSES.has(r.status));
 
   return (
     <div>
-      <Header
-        title="Risk Assessment"
-        subtitle="Portfolio risk framework — discussion purposes only"
-        showCompliance
-        complianceVariant="discussion"
+      <PageHeader
+        eyebrow="Risk Register"
+        title="Is risk being taken intentionally?"
+        lede="A standing register of the risks specific to a family office — concentration, illiquidity, managers, leverage, operating businesses, tax, governance, and behavior. The aim is deliberate risk, reviewed on a cadence, not a single score."
+        status={{ label: "Discussion Point", tone: "info" }}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-slate-500">
-              IPS Risk Tolerance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-slate-900">
-              {IPS_SUMMARY.riskTolerance}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-slate-500">
-              Illiquid Allocation
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-slate-900">{illiquidPct}%</p>
-            <p className="text-xs text-slate-500 mt-1">of total portfolio</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-slate-500">
-              Number of Holdings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-slate-900">{HOLDINGS.length}</p>
-            <p className="text-xs text-slate-500 mt-1">distinct investments</p>
-          </CardContent>
-        </Card>
+      {/* Summary */}
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Panel className="p-5">
+          <Stat
+            label="Elevated factors"
+            value={String(elevated.length)}
+            sub="Of 8 on the register"
+            tone="critical"
+          />
+        </Panel>
+        <Panel className="p-5">
+          <Stat
+            label="Illiquid allocation"
+            value={fmtPct(illiquidPct(), 0)}
+            sub="Multi-year and illiquid"
+            tone="caution"
+          />
+        </Panel>
+        <Panel className="p-5">
+          <Stat
+            label="Private markets"
+            value={fmtPct(mix.privatePct, 0)}
+            sub={`Ceiling ${mix.ceiling}%`}
+            tone="caution"
+          />
+        </Panel>
+        <Panel className="p-5">
+          <Stat
+            label="Operating businesses"
+            value={fmtPct(operating, 0)}
+            sub="Ceiling 15%"
+            tone="caution"
+          />
+        </Panel>
       </div>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">
-              Risk Factor Assessment
-            </CardTitle>
-            <ComplianceBadge variant="discussion" />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {RISK_FACTORS.map((r) => (
-            <div key={r.factor}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-medium text-slate-900">
-                  {r.factor}
-                </span>
-                <span
-                  className={`text-xs font-semibold ${
-                    SCORE_COLORS[r.category] ?? "text-slate-600"
-                  }`}
-                >
-                  {r.category}
-                </span>
-              </div>
-              <div className="h-2 bg-slate-100 rounded-full mb-1">
-                <div
-                  className="h-2 rounded-full bg-blue-500"
-                  style={{ width: `${r.score}%` }}
-                />
-              </div>
-              <p className="text-xs text-slate-500">{r.description}</p>
-            </div>
+      {/* Risk review queue */}
+      <section className="mb-10">
+        <SectionHeading
+          eyebrow="Priority"
+          title="Risk review queue"
+          description="The factors actively requiring advisor or committee attention this quarter."
+        />
+        <div className="space-y-3">
+          {reviewQueue.map((r) => (
+            <RiskRow key={r.id} r={r} />
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <p className="mt-6 text-xs text-slate-400">
-        Risk scores are illustrative discussion points only. Requires advisor review. Not investment advice.
+      {/* Full register */}
+      <section>
+        <SectionHeading
+          eyebrow="Standing register"
+          title="All risk factors"
+          description="Reviewed each quarter at the Investment Committee."
+        />
+        <div className="space-y-3">
+          {RISK_REGISTER.map((r) => (
+            <RiskRow key={r.id} r={r} />
+          ))}
+        </div>
+      </section>
+
+      <p className="mt-10 border-t border-hairline pt-5 text-[11px] leading-relaxed text-ink-muted">
+        The risk register is an illustrative discussion tool. Severities and
+        observations are not investment advice or predictions. Each item requires
+        advisor and Investment Committee review.
       </p>
     </div>
   );

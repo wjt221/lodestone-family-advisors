@@ -1,13 +1,29 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 
-const geist = Geist({ subsets: ["latin"] });
+const sans = Geist({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const mono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+});
+
+const serif = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+});
 
 export const metadata: Metadata = {
-  title: "LFA Investment OS",
-  description: "Lodestone Family Advisors — Investment Operating System",
+  title: "Lodestone Family Advisors — Investment OS",
+  description:
+    "Advisor-led investment strategy, governance, and portfolio oversight for the Atwater Family Office.",
 };
 
 export default function RootLayout({
@@ -16,12 +32,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${geist.className} bg-slate-50 text-slate-900`}>
+    <html
+      lang="en"
+      className={`${sans.variable} ${mono.variable} ${serif.variable}`}
+    >
+      <body className="bg-paper text-ink antialiased">
         <div className="flex min-h-screen">
           <Sidebar />
-          <main className="flex-1 overflow-auto">
-            <div className="max-w-7xl mx-auto px-6 py-8">{children}</div>
+          <main className="flex-1 overflow-x-hidden">
+            <div className="mx-auto w-full max-w-[1180px] px-8 py-10 lg:px-12">
+              {children}
+            </div>
           </main>
         </div>
       </body>

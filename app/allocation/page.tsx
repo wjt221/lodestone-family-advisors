@@ -1,96 +1,160 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Header } from "@/components/header";
-import { AllocationChart } from "@/components/allocation-chart";
-import { ComplianceBadge } from "@/components/compliance-badge";
-import { HOLDINGS, IPS_SUMMARY } from "@/lib/mock-data";
+import { PageHeader } from "@/components/page-header";
+import { SectionHeading } from "@/components/section";
+import { Panel } from "@/components/panel";
+import { Stat } from "@/components/stat";
+import { StatusPill } from "@/components/status-pill";
+import { PolicyRangeBar } from "@/components/policy-range-bar";
+import {
+  policyVariance,
+  marketMix,
+  fmtPct,
+  fmtSignedPct,
+  fmtMillions,
+  type RangeStatus,
+} from "@/lib/calculations";
+import { PRIVATE_MARKETS_CEILING } from "@/lib/mock-data";
 
-function formatCurrency(n: number) {
-  return `$${(n / 1_000_000).toFixed(2)}M`;
-}
+const STATUS_TONE: Record<RangeStatus, "positive" | "critical" | "caution"> = {
+  "Within range": "positive",
+  "Below range": "critical",
+  "Above range": "caution",
+};
+
+const REVIEW_NOTE: Record<RangeStatus, string> = {
+  "Within range": "Within the proposed policy range. No action required.",
+  "Below range":
+    "Below the proposed range — discussion point for the Investment Committee.",
+  "Above range":
+    "Above the proposed range — advisor review required before adding exposure.",
+};
 
 export default function AllocationPage() {
+  const rows = policyVariance();
+  const mix = marketMix();
+
   return (
     <div>
-      <Header
-        title="Allocation Analysis"
-        subtitle="Current vs. target allocation framework"
-        showCompliance
-        complianceVariant="proposed"
+      <PageHeader
+        eyebrow="Allocation Discipline"
+        title="Positioning against policy ranges"
+        lede="Allocation is governed by ranges, not a single 'perfect' target. Each asset class is reviewed against its proposed band — variances become discussion points and review flags, never automatic trades."
+        status={{ label: "Proposed Framework", tone: "info" }}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">
-              Current Allocation
-            </CardTitle>
-            <p className="text-xs text-slate-400">Illustrative figures only</p>
-          </CardHeader>
-          <CardContent>
-            <AllocationChart />
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">
-                Current vs. IPS Target
-              </CardTitle>
-              <ComplianceBadge variant="proposed" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {HOLDINGS.map((h) => (
-                <div key={h.id}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-600 truncate">{h.name}</span>
-                    <span className="font-medium text-slate-900 ml-2">
-                      {h.allocationPct}% · {formatCurrency(h.value)}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full">
-                    <div
-                      className="h-2 rounded-full"
-                      style={{ width: `${h.allocationPct}%`, background: h.color }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">
-                IPS Target Allocation
-              </CardTitle>
-              <ComplianceBadge variant="approved" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Object.entries(IPS_SUMMARY.targetAllocation).map(([key, pct]) => (
-                <div
-                  key={key}
-                  className="bg-slate-50 rounded-lg p-4 border border-slate-100"
-                >
-                  <p className="text-xs text-slate-500 capitalize mb-1">
-                    {key.replace(/([A-Z])/g, " $1")}
-                  </p>
-                  <p className="text-2xl font-bold text-slate-900">{pct}%</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Public / private mix */}
+      <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel className="p-5">
+          <Stat
+            label="Public markets"
+            value={fmtPct(mix.publicPct, 0)}
+            sub={fmtMillions(mix.publicValue)}
+          />
+        </Panel>
+        <Panel className="p-5">
+          <Stat
+            label="Private markets"
+            value={fmtPct(mix.privatePct, 0)}
+            sub={`Framework ceiling ${PRIVATE_MARKETS_CEILING}%`}
+            tone="caution"
+          />
+        </Panel>
+        <Panel className="flex flex-col justify-center p-5">
+          <p className="eyebrow mb-2">Framework check</p>
+          <StatusPill tone={mix.overCeiling ? "critical" : "positive"}>
+            {mix.overCeiling
+              ? "Above private-markets ceiling"
+              : "Within private-markets ceiling"}
+          </StatusPill>
+          <p className="mt-2.5 text-[12px] leading-relaxed text-ink-muted">
+            {mix.overCeiling
+              ? "Advisor review required before approving new illiquid commitments."
+              : "Private exposure is within the proposed framework."}
+          </p>
+        </Panel>
       </div>
 
-      <p className="mt-6 text-xs text-slate-400">
-        Proposed Framework — requires advisor review. All values illustrative.
+      {/* Allocation vs policy ranges */}
+      <section>
+        <SectionHeading
+          eyebrow="Discipline"
+          title="Asset class vs. policy range"
+          description="Shaded band shows the proposed min–max; the tick marks target; the dot marks current positioning."
+        />
+        <Panel inset className="overflow-hidden">
+          {/* header row */}
+          <div className="hidden grid-cols-[1.4fr_2fr_0.8fr_1.3fr] gap-4 border-b border-hairline px-6 py-3 lg:grid">
+            <span className="eyebrow">Asset class</span>
+            <span className="eyebrow">Position within range</span>
+            <span className="eyebrow text-right">Current</span>
+            <span className="eyebrow text-right">Status</span>
+          </div>
+          <ul className="divide-y divide-hairline">
+            {rows.map((r) => (
+              <li
+                key={r.assetClass}
+                className="grid grid-cols-1 gap-4 px-6 py-5 lg:grid-cols-[1.4fr_2fr_0.8fr_1.3fr] lg:items-center"
+              >
+                <div>
+                  <p className="text-[14px] font-medium text-ink">{r.assetClass}</p>
+                  <p className="mt-0.5 text-[12px] text-ink-muted">
+                    Target {r.target}% · range {r.min}–{r.max}%
+                  </p>
+                </div>
+                <div>
+                  <PolicyRangeBar
+                    current={r.current}
+                    min={r.min}
+                    target={r.target}
+                    max={r.max}
+                    status={r.status}
+                  />
+                </div>
+                <div className="flex items-baseline gap-2 lg:block lg:text-right">
+                  <p className="tnum text-[15px] font-medium text-ink">
+                    {fmtPct(r.current)}
+                  </p>
+                  <p className="tnum text-[12px] text-ink-muted">
+                    {fmtSignedPct(r.varianceFromTarget)} vs target
+                  </p>
+                </div>
+                <div className="lg:text-right">
+                  <StatusPill tone={STATUS_TONE[r.status]} dot={false}>
+                    {r.status}
+                  </StatusPill>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      </section>
+
+      {/* Discussion points */}
+      <section className="mt-8">
+        <SectionHeading eyebrow="For review" title="Discussion points" />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {rows
+            .filter((r) => r.status !== "Within range")
+            .map((r) => (
+              <Panel key={r.assetClass} className="p-5">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-[14px] font-medium text-ink">{r.assetClass}</p>
+                  <StatusPill tone={STATUS_TONE[r.status]} dot={false}>
+                    {r.status}
+                  </StatusPill>
+                </div>
+                <p className="text-[13px] leading-relaxed text-ink-muted">
+                  Currently {fmtPct(r.current)} against a {r.min}–{r.max}% range.{" "}
+                  {REVIEW_NOTE[r.status]}
+                </p>
+              </Panel>
+            ))}
+        </div>
+      </section>
+
+      <p className="mt-10 border-t border-hairline pt-5 text-[11px] leading-relaxed text-ink-muted">
+        Policy ranges and positioning are illustrative and proposed for discussion.
+        Nothing here is investment advice or a recommendation to buy or sell. Any
+        rebalancing is a governance decision requiring advisor and committee review.
       </p>
     </div>
   );
