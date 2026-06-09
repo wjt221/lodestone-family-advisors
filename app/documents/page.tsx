@@ -70,12 +70,23 @@ export default async function DocumentsPage() {
                       <StatusPill tone={toneForLabel(d.status)} dot={false}>
                         {d.status}
                       </StatusPill>
-                      <button
-                        className="text-ink-muted/60 transition-colors hover:text-brand"
-                        aria-label={`Download ${d.name}`}
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
+                      {d.storagePath ? (
+                        <a
+                          href={`/documents/download?id=${d.id}`}
+                          className="text-ink-muted/60 transition-colors hover:text-brand"
+                          aria-label={`Download ${d.name}`}
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <span
+                          className="cursor-not-allowed text-ink-muted/25"
+                          title="No file attached"
+                          aria-label="No file attached"
+                        >
+                          <Download className="h-4 w-4" />
+                        </span>
+                      )}
                     </div>
                   </li>
                 ))}

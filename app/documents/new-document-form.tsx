@@ -93,6 +93,15 @@ export function NewDocumentForm() {
           <input name="owner" placeholder="Owner or preparer" className={inputClass} />
         </Field>
 
+        <Field label="File" hint="PDF or document up to 25 MB. Stored in the private, access-controlled vault.">
+          <input
+            type="file"
+            name="file"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.png,.jpg,.jpeg"
+            className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1 file:text-[12px] file:font-medium file:text-ink`}
+          />
+        </Field>
+
         {error ? <FormError message={error} /> : null}
 
         <div className="flex items-center gap-2 pt-1">

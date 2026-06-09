@@ -18,6 +18,7 @@ const PALETTE: Record<string, string> = {
   "Public Market Equities": "#2C3E54",
   "Private Equity": "#6B5B7B",
   "Real Estate": "#5C7A6B",
+  "Venture Capital": "#7D4E57",
   Infrastructure: "#3E5C82",
   "Hedge Funds": "#A8763E",
 };

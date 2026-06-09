@@ -79,6 +79,41 @@ export interface NewDocumentInput {
   owner: string;
 }
 
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB
+const UPLOAD_BUCKET = "client-documents";
+
+/**
+ * Uploads a file into the private client-documents bucket, namespaced by client
+ * id (required by the Storage write policy), and returns its storage reference.
+ * Advisor/admin only; RLS + the Storage policy are the real boundary.
+ */
+export async function uploadDocumentFile(
+  file: File,
+): Promise<{ bucket: string; path: string }> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Uploading documents requires secure mode (Supabase is not configured).");
+  }
+  const ctx = await getSessionContext();
+  const clientId = ctx.clientId;
+  if (!clientId) throw new Error("No accessible client to attach this file to.");
+  if (ctx.role !== "advisor" && ctx.role !== "admin") {
+    throw new Error("Only advisors or admins may upload documents.");
+  }
+  if (file.size === 0) throw new Error("The selected file is empty.");
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error("Files must be 25 MB or smaller.");
+
+  const safeName = file.name.replace(/[^\w.\- ]+/g, "_").slice(-120);
+  const path = `${clientId}/${Date.now()}-${safeName}`;
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.storage
+    .from(UPLOAD_BUCKET)
+    .upload(path, file, { contentType: file.type || "application/octet-stream" });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+
+  return { bucket: UPLOAD_BUCKET, path };
+}
+
 /** Whether the current session may add/edit document records. */
 export async function canWriteDocuments(): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
@@ -92,7 +127,10 @@ export async function canWriteDocuments(): Promise<boolean> {
  * registers the record so it appears in the vault. Write authority is enforced
  * here and, definitively, by RLS (`can_write_client`).
  */
-export async function createDocument(input: NewDocumentInput): Promise<{ id: string }> {
+export async function createDocument(
+  input: NewDocumentInput,
+  storage?: { bucket: string; path: string },
+): Promise<{ id: string }> {
   if (!isSupabaseConfigured()) {
     throw new Error("Adding documents requires secure mode (Supabase is not configured).");
   }
@@ -116,6 +154,8 @@ export async function createDocument(input: NewDocumentInput): Promise<{ id: str
       category: input.category.trim() || null,
       owner: input.owner.trim() || null,
       status: input.status.trim() || "Draft for Advisor Review",
+      storage_bucket: storage?.bucket ?? null,
+      storage_path: storage?.path ?? null,
     })
     .select("id")
     .single();

@@ -6,7 +6,7 @@ import "server-only";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getSessionContext } from "./session";
-import type { HoldingRow } from "@/lib/supabase/types";
+import type { HoldingRow, TablesUpdate } from "@/lib/supabase/types";
 import {
   HOLDINGS as MOCK_HOLDINGS,
   ENTITIES as MOCK_ENTITIES,
@@ -168,4 +168,54 @@ export async function getHoldingsDetailed(): Promise<HoldingView[]> {
     oversight: r.oversight ?? "",
     note: r.note ?? "",
   }));
+}
+
+/** Whether the current session may edit holdings: secure mode + advisor/admin. */
+export async function canWriteHoldings(): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  const ctx = await getSessionContext();
+  return Boolean(ctx.clientId) && (ctx.role === "advisor" || ctx.role === "admin");
+}
+
+export interface HoldingUpdateInput {
+  value?: number;
+  assetClass?: string;
+  strategy?: string;
+  liquidity?: string;
+}
+
+/**
+ * Updates a holding's classification/valuation. Authority enforced here and,
+ * definitively, by RLS (`can_write_client`). Derived figures (weights, lenses,
+ * charts) recompute from values on render, so changes are live immediately.
+ */
+export async function updateHolding(id: string, input: HoldingUpdateInput): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Editing holdings requires secure mode (Supabase is not configured).");
+  }
+  const ctx = await getSessionContext();
+  if (!ctx.clientId) throw new Error("No accessible client.");
+  if (ctx.role !== "advisor" && ctx.role !== "admin") {
+    throw new Error("Only advisors or admins may edit holdings.");
+  }
+
+  const patch: TablesUpdate<"holdings"> = {};
+  if (input.value != null) {
+    if (!Number.isFinite(input.value)) throw new Error("Value must be a number.");
+    patch.value = input.value;
+  }
+  if (input.assetClass?.trim()) patch.asset_class = input.assetClass.trim();
+  if (input.strategy?.trim()) patch.strategy = input.strategy.trim();
+  if (input.liquidity?.trim()) patch.liquidity = input.liquidity.trim();
+  if (Object.keys(patch).length === 0) return;
+
+  const supabase = await createServerSupabase();
+  const res = await supabase
+    .from("holdings")
+    .update(patch)
+    .eq("id", id)
+    .eq("client_id", ctx.clientId)
+    .select("id")
+    .single();
+  if (res.error) throw new Error(res.error.message);
 }
