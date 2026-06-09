@@ -4,41 +4,42 @@ import { Panel } from "@/components/panel";
 import { Stat } from "@/components/stat";
 import { StatusPill } from "@/components/status-pill";
 import { PolicyRangeBar } from "@/components/policy-range-bar";
-import {
-  policyVariance,
-  marketMix,
-  fmtPct,
-  fmtSignedPct,
-  fmtMillions,
-  type RangeStatus,
-} from "@/lib/calculations";
-import { PRIVATE_MARKETS_CEILING } from "@/lib/mock-data";
+import { getHoldingsDetailed } from "@/lib/data/holdings";
+import { getPolicyRanges } from "@/lib/data/allocations";
+import { getActiveClient } from "@/lib/data/clients";
+import { rangeRows, marketMixOf, type RangeRow } from "@/lib/portfolio-math";
+import { fmtPct, fmtSignedPct, fmtMillions } from "@/lib/calculations";
 
-const STATUS_TONE: Record<RangeStatus, "positive" | "critical" | "caution"> = {
+const STATUS_TONE: Record<RangeRow["status"], "positive" | "critical" | "caution"> = {
   "Within range": "positive",
   "Below range": "critical",
   "Above range": "caution",
 };
 
-const REVIEW_NOTE: Record<RangeStatus, string> = {
-  "Within range": "Within the proposed policy range. No action required.",
-  "Below range":
-    "Below the proposed range — discussion point for the Investment Committee.",
-  "Above range":
-    "Above the proposed range — advisor review required before adding exposure.",
+const REVIEW_NOTE: Record<RangeRow["status"], string> = {
+  "Within range": "Within the policy range. No action required.",
+  "Below range": "Below the policy range — discussion point for the Investment Committee.",
+  "Above range": "Above the policy range — advisor review required before adding exposure.",
 };
 
-export default function AllocationPage() {
-  const rows = policyVariance();
-  const mix = marketMix();
+export default async function AllocationPage() {
+  const [holdings, ranges, client] = await Promise.all([
+    getHoldingsDetailed(),
+    getPolicyRanges(),
+    getActiveClient(),
+  ]);
+  const rows = rangeRows(holdings, ranges);
+  const mix = marketMixOf(holdings);
+  const outOfRange = rows.filter((r) => r.status !== "Within range");
 
   return (
     <div>
       <PageHeader
         eyebrow="Allocation Discipline"
         title="Positioning against policy ranges"
-        lede="Allocation is governed by ranges, not a single 'perfect' target. Each asset class is reviewed against its proposed band — variances become discussion points and review flags, never automatic trades."
+        lede="Allocation is governed by ranges, not a single 'perfect' target. Each asset class is reviewed against its strategic band — variances become discussion points and review flags, never automatic trades."
         status={{ label: "Proposed Framework", tone: "info" }}
+        client={{ name: client.name, asOf: client.asOf }}
       />
 
       {/* Public / private mix */}
@@ -54,21 +55,21 @@ export default function AllocationPage() {
           <Stat
             label="Private markets"
             value={fmtPct(mix.privatePct, 0)}
-            sub={`Framework ceiling ${PRIVATE_MARKETS_CEILING}%`}
+            sub={fmtMillions(mix.privateValue)}
             tone="caution"
           />
         </Panel>
         <Panel className="flex flex-col justify-center p-5">
           <p className="eyebrow mb-2">Framework check</p>
-          <StatusPill tone={mix.overCeiling ? "critical" : "positive"}>
-            {mix.overCeiling
-              ? "Above private-markets ceiling"
-              : "Within private-markets ceiling"}
+          <StatusPill tone={outOfRange.length ? "caution" : "positive"}>
+            {outOfRange.length
+              ? `${outOfRange.length} class${outOfRange.length > 1 ? "es" : ""} outside policy range`
+              : "All classes within policy ranges"}
           </StatusPill>
           <p className="mt-2.5 text-[12px] leading-relaxed text-ink-muted">
-            {mix.overCeiling
-              ? "Advisor review required before approving new illiquid commitments."
-              : "Private exposure is within the proposed framework."}
+            {outOfRange.length
+              ? "Each variance is a discussion point for the next Investment Committee."
+              : "Positioning is consistent with the strategic asset allocation."}
           </p>
         </Panel>
       </div>
@@ -78,10 +79,9 @@ export default function AllocationPage() {
         <SectionHeading
           eyebrow="Discipline"
           title="Asset class vs. policy range"
-          description="Shaded band shows the proposed min–max; the tick marks target; the dot marks current positioning."
+          description="Shaded band shows the strategic min–max; the tick marks target; the dot marks current positioning."
         />
         <Panel inset className="overflow-hidden">
-          {/* header row */}
           <div className="hidden grid-cols-[1.4fr_2fr_0.8fr_1.3fr] gap-4 border-b border-hairline px-6 py-3 lg:grid">
             <span className="eyebrow">Asset class</span>
             <span className="eyebrow">Position within range</span>
@@ -129,12 +129,11 @@ export default function AllocationPage() {
       </section>
 
       {/* Discussion points */}
-      <section className="mt-8">
-        <SectionHeading eyebrow="For review" title="Discussion points" />
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {rows
-            .filter((r) => r.status !== "Within range")
-            .map((r) => (
+      {outOfRange.length > 0 && (
+        <section className="mt-8">
+          <SectionHeading eyebrow="For review" title="Discussion points" />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {outOfRange.map((r) => (
               <Panel key={r.assetClass} className="p-5">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <p className="text-[14px] font-medium text-ink">{r.assetClass}</p>
@@ -148,13 +147,14 @@ export default function AllocationPage() {
                 </p>
               </Panel>
             ))}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
       <p className="mt-10 border-t border-hairline pt-5 text-[11px] leading-relaxed text-ink-muted">
-        Policy ranges and positioning are illustrative and proposed for discussion.
-        Nothing here is investment advice or a recommendation to buy or sell. Any
-        rebalancing is a governance decision requiring advisor and committee review.
+        Policy ranges reflect the strategic asset allocation under review with the
+        family. Nothing here is investment advice or a recommendation to buy or sell.
+        Any rebalancing is a governance decision requiring advisor and committee review.
       </p>
     </div>
   );

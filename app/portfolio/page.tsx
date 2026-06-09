@@ -3,29 +3,22 @@ import { SectionHeading } from "@/components/section";
 import { Panel, PanelHeader } from "@/components/panel";
 import { Stat } from "@/components/stat";
 import { StatusPill } from "@/components/status-pill";
-import { HOLDINGS, ENTITIES, classColor } from "@/lib/mock-data";
+import { getHoldingsDetailed } from "@/lib/data/holdings";
+import { getActiveClient } from "@/lib/data/clients";
 import {
-  allocationByClass,
-  allocationByLiquidity,
-  allocationByEntity,
-  concentrationWatchlist,
-  marketMix,
-  illiquidPct,
-  totalUnfunded,
-  blendedFeePct,
-  estAnnualFees,
-  fmtMillions,
-  fmtPct,
-} from "@/lib/calculations";
+  breakdownBy,
+  marketMixOf,
+  illiquidPctOf,
+  totalValue,
+  totalUnfundedOf,
+  totalCommitmentOf,
+  colorFor,
+  type BreakdownRow,
+} from "@/lib/portfolio-math";
+import { fmtMillions, fmtPct } from "@/lib/calculations";
 
-const ENTITY_NAME = new Map(ENTITIES.map((e) => [e.id, e.name]));
-
-function BreakdownList({
-  rows,
-}: {
-  rows: { label: string; pct: number; value: number; color?: string }[];
-}) {
-  const max = Math.max(...rows.map((r) => r.pct));
+function BreakdownList({ rows }: { rows: BreakdownRow[] }) {
+  const max = Math.max(...rows.map((r) => r.pct), 1);
   return (
     <ul className="space-y-3">
       {rows.map((r) => (
@@ -39,10 +32,7 @@ function BreakdownList({
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
             <div
               className="h-full rounded-full"
-              style={{
-                width: `${(r.pct / max) * 100}%`,
-                background: r.color ?? "var(--brand)",
-              }}
+              style={{ width: `${(r.pct / max) * 100}%`, background: r.color }}
             />
           </div>
         </li>
@@ -51,24 +41,44 @@ function BreakdownList({
   );
 }
 
-export default function PortfolioPage() {
-  const mix = marketMix();
-  const concentration = concentrationWatchlist();
-  const unfunded = HOLDINGS.filter((h) => (h.unfunded ?? 0) > 0);
+const liquidityTone = (liq: string) =>
+  liq === "Daily" ? "positive" : liq === "Illiquid" ? "critical" : "caution";
+
+export default async function PortfolioPage() {
+  const [holdings, client] = await Promise.all([getHoldingsDetailed(), getActiveClient()]);
+
+  const total = totalValue(holdings);
+  const mix = marketMixOf(holdings);
+  const unfunded = totalUnfundedOf(holdings);
+  const byClass = breakdownBy(holdings, (h) => h.assetClass);
+  const byLiquidity = breakdownBy(holdings, (h) => h.liquidity);
+  const byEntity = breakdownBy(holdings, (h) => h.entityName || "Managed Accounts");
+  const byStrategy = breakdownBy(holdings, (h) => h.strategy).slice(0, 10);
+  const byStructure = breakdownBy(holdings, (h) => h.structure).slice(0, 10);
+  const byManager = breakdownBy(holdings, (h) => h.manager).slice(0, 10);
+
+  const unfundedHoldings = holdings
+    .filter((h) => (h.unfunded ?? 0) > 0)
+    .sort((a, b) => (b.unfunded ?? 0) - (a.unfunded ?? 0));
 
   return (
     <div>
       <PageHeader
         eyebrow="Portfolio Oversight"
         title="Review portfolio alignment"
-        lede="Oversight, not a tracker. The same capital seen through several lenses — asset class, liquidity, entity, and concentration — so the family can see how the portfolio is actually shaped."
+        lede="Oversight, not a tracker. The same capital seen through several lenses — asset class, liquidity, entity, strategy, and structure — so the family can see how the portfolio is actually shaped."
         status={{ label: "Discussion Point", tone: "info" }}
+        client={{ name: client.name, asOf: client.asOf }}
       />
 
       {/* Summary band */}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Panel className="p-5">
-          <Stat label="Total AUM" value={fmtMillions(47_300_000)} sub="8 holdings" />
+          <Stat
+            label="Total investments"
+            value={fmtMillions(total)}
+            sub={`${holdings.length} positions`}
+          />
         </Panel>
         <Panel className="p-5">
           <Stat
@@ -80,7 +90,7 @@ export default function PortfolioPage() {
         <Panel className="p-5">
           <Stat
             label="Illiquid exposure"
-            value={fmtPct(illiquidPct(), 0)}
+            value={fmtPct(illiquidPctOf(holdings), 0)}
             sub="Multi-year and illiquid"
             tone="caution"
           />
@@ -88,26 +98,65 @@ export default function PortfolioPage() {
         <Panel className="p-5">
           <Stat
             label="Unfunded"
-            value={fmtMillions(totalUnfunded())}
-            sub="Future capital calls"
+            value={fmtMillions(unfunded)}
+            sub={`Of ${fmtMillions(totalCommitmentOf(holdings))} committed`}
             tone="caution"
           />
         </Panel>
       </div>
 
+      {/* Lenses */}
+      <section className="mb-10">
+        <SectionHeading
+          eyebrow="Exposure"
+          title="The same capital, six ways"
+          description="Asset class, liquidity, entity, strategy, structure, and manager — each answers a different oversight question."
+        />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Panel>
+            <PanelHeader title="By asset class" />
+            <BreakdownList rows={byClass} />
+          </Panel>
+          <Panel>
+            <PanelHeader title="By liquidity" />
+            <BreakdownList rows={byLiquidity} />
+          </Panel>
+          <Panel>
+            <PanelHeader title="By entity / household" />
+            <BreakdownList rows={byEntity} />
+          </Panel>
+          <Panel>
+            <PanelHeader title="By strategy" />
+            <BreakdownList rows={byStrategy} />
+          </Panel>
+          <Panel>
+            <PanelHeader title="By structure" />
+            <BreakdownList rows={byStructure} />
+          </Panel>
+          <Panel>
+            <PanelHeader title="By manager / sponsor" />
+            <BreakdownList rows={byManager} />
+          </Panel>
+        </div>
+      </section>
+
       {/* Holdings table */}
       <section className="mb-10">
-        <SectionHeading eyebrow="Holdings" title="All positions" />
+        <SectionHeading
+          eyebrow="Holdings"
+          title="All positions"
+          description="Sorted by market value. Commitments and unfunded amounts come from the schedule of alternative investments."
+        />
         <Panel inset className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-[13px]">
+          <table className="w-full min-w-[980px] text-[13px]">
             <thead>
               <tr className="border-b border-hairline">
-                {["Holding", "Asset class", "Entity", "Liquidity", "Value", "Weight", "Unfunded"].map(
+                {["Holding", "Asset class", "Strategy", "Entity", "Liquidity", "Value", "Weight", "Unfunded"].map(
                   (h, i) => (
                     <th
                       key={h}
                       className={`px-5 py-3 font-medium text-ink-muted ${
-                        i >= 4 ? "text-right" : "text-left"
+                        i >= 5 ? "text-right" : "text-left"
                       }`}
                     >
                       {h}
@@ -117,35 +166,31 @@ export default function PortfolioPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
-              {HOLDINGS.map((h) => (
+              {holdings.map((h) => (
                 <tr key={h.id} className="transition-colors hover:bg-secondary/40">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2.5">
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
-                        style={{ background: classColor(h.assetClass) }}
+                        style={{ background: colorFor(h.assetClass) }}
                       />
-                      <div>
-                        <p className="font-medium text-ink">{h.name}</p>
-                        <p className="text-[11.5px] text-ink-muted">{h.manager}</p>
+                      <div className="min-w-0">
+                        <p className="max-w-[260px] truncate font-medium text-ink">{h.name}</p>
+                        <p className="max-w-[260px] truncate text-[11.5px] text-ink-muted">
+                          {h.manager}
+                          {h.structure ? ` · ${h.structure}` : ""}
+                          {h.vintage ? ` · ${h.vintage}` : ""}
+                        </p>
                       </div>
                     </div>
                   </td>
                   <td className="px-5 py-3.5 text-ink-muted">{h.assetClass}</td>
-                  <td className="px-5 py-3.5 text-ink-muted">
-                    {ENTITY_NAME.get(h.entity)}
+                  <td className="px-5 py-3.5 text-ink-muted">{h.strategy || "—"}</td>
+                  <td className="max-w-[140px] truncate px-5 py-3.5 text-ink-muted">
+                    {h.entityName || "Managed Accounts"}
                   </td>
                   <td className="px-5 py-3.5">
-                    <StatusPill
-                      tone={
-                        h.liquidity === "Daily"
-                          ? "positive"
-                          : h.liquidity === "Illiquid"
-                            ? "critical"
-                            : "caution"
-                      }
-                      dot={false}
-                    >
+                    <StatusPill tone={liquidityTone(h.liquidity)} dot={false}>
                       {h.liquidity}
                     </StatusPill>
                   </td>
@@ -153,7 +198,7 @@ export default function PortfolioPage() {
                     {fmtMillions(h.value, 2)}
                   </td>
                   <td className="tnum px-5 py-3.5 text-right text-ink">
-                    {fmtPct(h.allocationPct, 0)}
+                    {fmtPct(h.allocationPct, 1)}
                   </td>
                   <td className="tnum px-5 py-3.5 text-right text-ink-muted">
                     {h.unfunded ? fmtMillions(h.unfunded, 2) : "—"}
@@ -165,126 +210,52 @@ export default function PortfolioPage() {
         </Panel>
       </section>
 
-      {/* Lenses */}
-      <section className="mb-10">
-        <SectionHeading
-          eyebrow="Lenses"
-          title="The same capital, four ways"
-          description="Asset class, liquidity, market, and entity — each answers a different oversight question."
-        />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <Panel>
-            <PanelHeader title="By asset class" />
-            <BreakdownList
-              rows={allocationByClass().map((c) => ({
-                label: c.assetClass,
-                pct: c.pct,
-                value: c.value,
-                color: c.color,
-              }))}
-            />
-          </Panel>
-          <Panel>
-            <PanelHeader title="By liquidity" />
-            <BreakdownList
-              rows={allocationByLiquidity().map((b) => ({
-                label: b.bucket,
-                pct: b.pct,
-                value: b.value,
-              }))}
-            />
-          </Panel>
-          <Panel>
-            <PanelHeader title="By entity" />
-            <BreakdownList
-              rows={allocationByEntity().map((e) => ({
-                label: e.name,
-                pct: e.pct,
-                value: e.holdingsValue,
-              }))}
-            />
-          </Panel>
-        </div>
-      </section>
-
-      {/* Watch items */}
+      {/* Unfunded commitments */}
       <section>
         <SectionHeading
           eyebrow="For review"
-          title="Watch items & discussion points"
+          title="Unfunded commitments"
+          description="Future capital calls the liquidity reserve must be able to meet."
         />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <Panel>
-            <PanelHeader title="Concentration watchlist" />
-            <ul className="space-y-3">
-              {concentration.map((c) => (
-                <li key={c.name} className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium text-ink">
-                      {c.name}
-                    </p>
-                    <p className="text-[11.5px] text-ink-muted">{c.note}</p>
-                  </div>
-                  <span className="tnum shrink-0 text-[13px] font-medium text-ink">
-                    {fmtPct(c.pct, 0)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Panel>
-
-          <Panel>
-            <PanelHeader title="Unfunded commitments" />
-            <ul className="space-y-3">
-              {unfunded.map((h) => (
-                <li key={h.id} className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium text-ink">
-                      {h.name}
-                    </p>
-                    <p className="tnum text-[11.5px] text-ink-muted">
-                      {fmtMillions(h.commitment ?? 0, 1)} committed
-                    </p>
-                  </div>
-                  <span className="tnum shrink-0 text-[13px] font-medium text-caution">
+        <Panel inset className="overflow-x-auto">
+          <table className="w-full min-w-[680px] text-[13px]">
+            <thead>
+              <tr className="border-b border-hairline">
+                {["Holding", "Entity", "Committed", "Contributed", "Unfunded"].map((h, i) => (
+                  <th
+                    key={h}
+                    className={`px-5 py-3 font-medium text-ink-muted ${i >= 2 ? "text-right" : "text-left"}`}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-hairline">
+              {unfundedHoldings.map((h) => (
+                <tr key={h.id}>
+                  <td className="max-w-[280px] truncate px-5 py-3 font-medium text-ink">{h.name}</td>
+                  <td className="px-5 py-3 text-ink-muted">{h.entityName || "Managed Accounts"}</td>
+                  <td className="tnum px-5 py-3 text-right text-ink-muted">
+                    {h.commitment ? fmtMillions(h.commitment, 2) : "—"}
+                  </td>
+                  <td className="tnum px-5 py-3 text-right text-ink-muted">
+                    {h.contributions ? fmtMillions(h.contributions, 2) : "—"}
+                  </td>
+                  <td className="tnum px-5 py-3 text-right font-medium text-caution">
                     {fmtMillions(h.unfunded ?? 0, 2)}
-                  </span>
-                </li>
+                  </td>
+                </tr>
               ))}
-            </ul>
-          </Panel>
-
-          <Panel>
-            <PanelHeader title="Cash & fee efficiency" />
-            <div className="space-y-4">
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <p className="text-[13px] text-ink-muted">Blended management fee</p>
-                  <span className="tnum text-[13px] font-medium text-ink">
-                    {fmtPct(blendedFeePct(), 2)}
-                  </span>
-                </div>
-                <p className="tnum text-[11.5px] text-ink-muted">
-                  ≈ {fmtMillions(estAnnualFees(), 2)} per year, asset-weighted
-                </p>
-              </div>
-              <div className="border-t border-hairline pt-3">
-                <StatusPill tone="info">Discussion Point</StatusPill>
-                <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
-                  The reserve sits below policy while $7.1M is held in municipals.
-                  Whether reserve sizing and short-duration positioning are optimally
-                  structured for both access and yield is a point for advisor review.
-                </p>
-              </div>
-            </div>
-          </Panel>
-        </div>
+            </tbody>
+          </table>
+        </Panel>
       </section>
 
       <p className="mt-10 border-t border-hairline pt-5 text-[11px] leading-relaxed text-ink-muted">
-        All holdings, weights, fees, and commitments are illustrative mock data.
-        Nothing here is investment advice. Portfolio changes require advisor and
-        Investment Committee review.
+        Values reflect the most recent statements and manager marks available and may
+        lag current market values. Nothing here is investment advice. Portfolio
+        changes require advisor and Investment Committee review.
       </p>
     </div>
   );
