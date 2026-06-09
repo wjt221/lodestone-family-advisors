@@ -12,6 +12,7 @@ import {
   Layers,
   Search,
   Droplets,
+  TrendingUp,
   CalendarDays,
   FolderOpen,
   Settings,
@@ -50,6 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Portfolio",
     items: [
       { label: "Portfolio", href: "/portfolio", icon: Briefcase },
+      { label: "Performance", href: "/performance", icon: TrendingUp },
       { label: "Liquidity", href: "/liquidity", icon: Droplets },
       { label: "Pipeline", href: "/investments", icon: Layers },
       { label: "Diligence", href: "/diligence", icon: Search },
@@ -144,11 +146,11 @@ export function Sidebar() {
           className="flex items-center gap-3 rounded-md py-1 transition-opacity hover:opacity-80"
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[13px] font-medium text-brand">
-            SC
+            {isSupabaseConfigured() ? "LF" : "SC"}
           </div>
           <div className="min-w-0">
             <p className="truncate text-[13px] font-medium text-white">
-              {CLIENT.advisor}
+              {isSupabaseConfigured() ? "Lodestone Family Advisors" : CLIENT.advisor}
             </p>
             <p className="truncate text-[11px] text-sidebar-foreground/45">
               Lead Advisor

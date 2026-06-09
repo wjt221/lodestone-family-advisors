@@ -476,12 +476,15 @@ export type Database = {
       }
       holdings: {
         Row: {
+          account: string | null
           allocation_pct: number
           asset_class: string
           carry_pct: number | null
           client_id: string
           commitment: number | null
+          contributions: number | null
           created_at: string
+          distributions: number | null
           entity_id: string | null
           id: string
           liquidity: string
@@ -490,18 +493,24 @@ export type Database = {
           mgmt_fee_pct: number
           name: string
           note: string | null
+          status: string
+          strategy: string | null
+          structure: string | null
           unfunded: number | null
           updated_at: string
           value: number
           vintage: string | null
         }
         Insert: {
+          account?: string | null
           allocation_pct?: number
           asset_class: string
           carry_pct?: number | null
           client_id: string
           commitment?: number | null
+          contributions?: number | null
           created_at?: string
+          distributions?: number | null
           entity_id?: string | null
           id?: string
           liquidity?: string
@@ -510,18 +519,24 @@ export type Database = {
           mgmt_fee_pct?: number
           name: string
           note?: string | null
+          status?: string
+          strategy?: string | null
+          structure?: string | null
           unfunded?: number | null
           updated_at?: string
           value?: number
           vintage?: string | null
         }
         Update: {
+          account?: string | null
           allocation_pct?: number
           asset_class?: string
           carry_pct?: number | null
           client_id?: string
           commitment?: number | null
+          contributions?: number | null
           created_at?: string
+          distributions?: number | null
           entity_id?: string | null
           id?: string
           liquidity?: string
@@ -530,6 +545,9 @@ export type Database = {
           mgmt_fee_pct?: number
           name?: string
           note?: string | null
+          status?: string
+          strategy?: string | null
+          structure?: string | null
           unfunded?: number | null
           updated_at?: string
           value?: number
@@ -799,6 +817,68 @@ export type Database = {
           },
         ]
       }
+      performance_summaries: {
+        Row: {
+          actual_pct: number | null
+          amount: number | null
+          as_of: string | null
+          benchmark_return: number | null
+          client_id: string
+          created_at: string
+          excess_return: number | null
+          expected_return: number | null
+          id: string
+          label: string
+          return_net: number | null
+          scope: string
+          sort_order: number
+          target_pct: number | null
+          updated_at: string
+        }
+        Insert: {
+          actual_pct?: number | null
+          amount?: number | null
+          as_of?: string | null
+          benchmark_return?: number | null
+          client_id: string
+          created_at?: string
+          excess_return?: number | null
+          expected_return?: number | null
+          id?: string
+          label: string
+          return_net?: number | null
+          scope: string
+          sort_order?: number
+          target_pct?: number | null
+          updated_at?: string
+        }
+        Update: {
+          actual_pct?: number | null
+          amount?: number | null
+          as_of?: string | null
+          benchmark_return?: number | null
+          client_id?: string
+          created_at?: string
+          excess_return?: number | null
+          expected_return?: number | null
+          id?: string
+          label?: string
+          return_net?: number | null
+          scope?: string
+          sort_order?: number
+          target_pct?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_summaries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1027,3 +1107,4 @@ export type EntityRow = Tables<"entities">
 export type HoldingRow = Tables<"holdings">
 export type MeetingRow = Tables<"meetings">
 export type DocumentRow = Tables<"documents">
+export type PerformanceSummaryRow = Tables<"performance_summaries">
