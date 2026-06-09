@@ -12,6 +12,7 @@ import {
   totalValue,
   totalUnfundedOf,
   totalCommitmentOf,
+  ownerLookThrough,
   colorFor,
   type BreakdownRow,
 } from "@/lib/portfolio-math";
@@ -53,6 +54,13 @@ export default async function PortfolioPage() {
   const byClass = breakdownBy(holdings, (h) => h.assetClass);
   const byLiquidity = breakdownBy(holdings, (h) => h.liquidity);
   const byEntity = breakdownBy(holdings, (h) => h.entityName || "Managed Accounts");
+  const byOwner = ownerLookThrough(holdings).map((o) => ({
+    label: o.owner,
+    value: o.value,
+    pct: o.pct,
+    count: o.positions,
+    color: o.color,
+  }));
   const byStrategy = breakdownBy(holdings, (h) => h.strategy).slice(0, 10);
   const byStructure = breakdownBy(holdings, (h) => h.structure).slice(0, 10);
   const byManager = breakdownBy(holdings, (h) => h.manager).slice(0, 10);
@@ -109,13 +117,17 @@ export default async function PortfolioPage() {
       <section className="mb-10">
         <SectionHeading
           eyebrow="Exposure"
-          title="The same capital, six ways"
-          description="Asset class, liquidity, entity, strategy, structure, and manager — each answers a different oversight question."
+          title="The same capital, seven ways"
+          description="Asset class, liquidity, owner, entity, strategy, structure, and manager — each answers a different oversight question."
         />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Panel>
             <PanelHeader title="By asset class" />
             <BreakdownList rows={byClass} />
+          </Panel>
+          <Panel>
+            <PanelHeader title="By owner (look-through)" />
+            <BreakdownList rows={byOwner} />
           </Panel>
           <Panel>
             <PanelHeader title="By liquidity" />

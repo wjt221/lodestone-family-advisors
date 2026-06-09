@@ -474,6 +474,54 @@ export type Database = {
           },
         ]
       }
+      entity_owners: {
+        Row: {
+          client_id: string
+          created_at: string
+          entity_id: string
+          id: string
+          note: string | null
+          owner_name: string
+          pct: number
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          entity_id: string
+          id?: string
+          note?: string | null
+          owner_name: string
+          pct?: number
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          entity_id?: string
+          id?: string
+          note?: string | null
+          owner_name?: string
+          pct?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_owners_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entity_owners_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       holdings: {
         Row: {
           account: string | null
@@ -493,6 +541,8 @@ export type Database = {
           mgmt_fee_pct: number
           name: string
           note: string | null
+          oversight: string | null
+          owners: Json
           status: string
           strategy: string | null
           structure: string | null
@@ -519,6 +569,8 @@ export type Database = {
           mgmt_fee_pct?: number
           name: string
           note?: string | null
+          oversight?: string | null
+          owners?: Json
           status?: string
           strategy?: string | null
           structure?: string | null
@@ -545,6 +597,8 @@ export type Database = {
           mgmt_fee_pct?: number
           name?: string
           note?: string | null
+          oversight?: string | null
+          owners?: Json
           status?: string
           strategy?: string | null
           structure?: string | null

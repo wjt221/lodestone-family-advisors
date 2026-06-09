@@ -41,6 +41,19 @@ export interface HoldingView {
   strategy: string;
   entityName: string;
   status: string;
+  /** Ownership splits, e.g. [{ name: "Kim", pct: 70 }, { name: "Cindy", pct: 30 }]. */
+  owners: { name: string; pct: number }[];
+  /** 'Internal' | 'External' oversight per the schedule. */
+  oversight: string;
+  note: string;
+}
+
+function parseOwners(value: unknown): { name: string; pct: number }[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((o): o is { name?: unknown; pct?: unknown } => typeof o === "object" && o !== null)
+    .map((o) => ({ name: String(o.name ?? ""), pct: Number(o.pct ?? 0) }))
+    .filter((o) => o.name && o.pct > 0);
 }
 
 function mapRow(row: HoldingRow): Holding {
@@ -104,6 +117,9 @@ function mockDetailed(): HoldingView[] {
     strategy: "",
     entityName: entityName.get(h.entity) ?? "",
     status: "Open",
+    owners: [{ name: entityName.get(h.entity) ?? "Family", pct: 100 }],
+    oversight: "External",
+    note: h.note ?? "",
   }));
 }
 
@@ -123,7 +139,7 @@ export async function getHoldingsDetailed(): Promise<HoldingView[]> {
   const res = await supabase
     .from("holdings")
     .select(
-      "id, name, asset_class, market, liquidity, value, allocation_pct, manager, vintage, commitment, unfunded, contributions, distributions, account, structure, strategy, status, entities ( name )",
+      "id, name, asset_class, market, liquidity, value, allocation_pct, manager, vintage, commitment, unfunded, contributions, distributions, account, structure, strategy, status, owners, oversight, note, entities ( name )",
     )
     .eq("client_id", ctx.clientId)
     .order("value", { ascending: false });
@@ -148,5 +164,8 @@ export async function getHoldingsDetailed(): Promise<HoldingView[]> {
     strategy: r.strategy ?? "",
     entityName: r.entities?.name ?? "",
     status: r.status ?? "Open",
+    owners: parseOwners(r.owners),
+    oversight: r.oversight ?? "",
+    note: r.note ?? "",
   }));
 }

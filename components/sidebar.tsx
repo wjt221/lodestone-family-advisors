@@ -13,6 +13,7 @@ import {
   Search,
   Droplets,
   TrendingUp,
+  Users,
   CalendarDays,
   FolderOpen,
   Settings,
@@ -51,6 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Portfolio",
     items: [
       { label: "Portfolio", href: "/portfolio", icon: Briefcase },
+      { label: "Owners & Entities", href: "/entities", icon: Users },
       { label: "Performance", href: "/performance", icon: TrendingUp },
       { label: "Liquidity", href: "/liquidity", icon: Droplets },
       { label: "Pipeline", href: "/investments", icon: Layers },
