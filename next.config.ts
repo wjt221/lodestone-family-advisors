@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  experimental: {
+    serverActions: {
+      // Document uploads go through a server action; default is 1 MB.
+      bodySizeLimit: "26mb",
+    },
+  },
 };
 
 export default nextConfig;

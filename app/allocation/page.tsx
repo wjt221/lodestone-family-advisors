@@ -7,7 +7,7 @@ import { PolicyRangeBar } from "@/components/policy-range-bar";
 import { getHoldingsDetailed } from "@/lib/data/holdings";
 import { getPolicyRanges } from "@/lib/data/allocations";
 import { getActiveClient } from "@/lib/data/clients";
-import { rangeRows, marketMixOf, type RangeRow } from "@/lib/portfolio-math";
+import { rangeRows, marketMixOf, breakdownBy, type RangeRow } from "@/lib/portfolio-math";
 import { fmtPct, fmtSignedPct, fmtMillions } from "@/lib/calculations";
 
 const STATUS_TONE: Record<RangeRow["status"], "positive" | "critical" | "caution"> = {
@@ -31,6 +31,12 @@ export default async function AllocationPage() {
   const rows = rangeRows(holdings, ranges);
   const mix = marketMixOf(holdings);
   const outOfRange = rows.filter((r) => r.status !== "Within range");
+  // Classes held in the portfolio that have no policy range yet (e.g. a class
+  // recently split out, like Venture Capital).
+  const ranged = new Set(ranges.map((r) => r.assetClass));
+  const unranged = breakdownBy(holdings, (h) => h.assetClass).filter(
+    (c) => !ranged.has(c.label),
+  );
 
   return (
     <div>
@@ -127,6 +133,40 @@ export default async function AllocationPage() {
           </ul>
         </Panel>
       </section>
+
+      {/* Classes without a policy range yet */}
+      {unranged.length > 0 && (
+        <section className="mt-8">
+          <SectionHeading
+            eyebrow="Policy gap"
+            title="Classes without a policy range"
+            description="Held in the portfolio but not yet covered by the strategic asset allocation — set a range with your advisor."
+          />
+          <Panel inset>
+            <ul className="divide-y divide-hairline">
+              {unranged.map((c) => (
+                <li
+                  key={c.label}
+                  className="flex items-center justify-between gap-4 px-6 py-4"
+                >
+                  <div>
+                    <p className="text-[14px] font-medium text-ink">{c.label}</p>
+                    <p className="text-[12px] text-ink-muted">{c.count} positions</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <p className="tnum text-[14px] font-medium text-ink">
+                      {fmtPct(c.pct)} · {fmtMillions(c.value)}
+                    </p>
+                    <StatusPill tone="caution" dot={false}>
+                      No policy range
+                    </StatusPill>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        </section>
+      )}
 
       {/* Discussion points */}
       {outOfRange.length > 0 && (

@@ -3,8 +3,9 @@ import { SectionHeading } from "@/components/section";
 import { Panel, PanelHeader } from "@/components/panel";
 import { Stat } from "@/components/stat";
 import { StatusPill } from "@/components/status-pill";
-import { getHoldingsDetailed } from "@/lib/data/holdings";
+import { getHoldingsDetailed, canWriteHoldings } from "@/lib/data/holdings";
 import { getActiveClient } from "@/lib/data/clients";
+import { EditHolding } from "./edit-holding";
 import {
   breakdownBy,
   marketMixOf,
@@ -46,7 +47,11 @@ const liquidityTone = (liq: string) =>
   liq === "Daily" ? "positive" : liq === "Illiquid" ? "critical" : "caution";
 
 export default async function PortfolioPage() {
-  const [holdings, client] = await Promise.all([getHoldingsDetailed(), getActiveClient()]);
+  const [holdings, client, canWrite] = await Promise.all([
+    getHoldingsDetailed(),
+    getActiveClient(),
+    canWriteHoldings(),
+  ]);
 
   const total = totalValue(holdings);
   const mix = marketMixOf(holdings);
@@ -175,6 +180,7 @@ export default async function PortfolioPage() {
                     </th>
                   ),
                 )}
+                {canWrite ? <th className="px-3 py-3" aria-label="Edit" /> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
@@ -210,11 +216,25 @@ export default async function PortfolioPage() {
                     {fmtMillions(h.value, 2)}
                   </td>
                   <td className="tnum px-5 py-3.5 text-right text-ink">
-                    {fmtPct(h.allocationPct, 1)}
+                    {fmtPct(total ? (h.value / total) * 100 : 0, 1)}
                   </td>
                   <td className="tnum px-5 py-3.5 text-right text-ink-muted">
                     {h.unfunded ? fmtMillions(h.unfunded, 2) : "—"}
                   </td>
+                  {canWrite ? (
+                    <td className="px-3 py-3.5">
+                      <EditHolding
+                        holding={{
+                          id: h.id,
+                          name: h.name,
+                          value: h.value,
+                          assetClass: h.assetClass,
+                          strategy: h.strategy,
+                          liquidity: h.liquidity,
+                        }}
+                      />
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
