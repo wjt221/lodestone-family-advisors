@@ -5,10 +5,13 @@ import { Panel } from "@/components/panel";
 import { StatusPill } from "@/components/status-pill";
 import { DECISION_LOG } from "@/lib/mock-data";
 import { getMeetings, canWriteMeetings } from "@/lib/data/meetings";
+import { isDemoMode } from "@/lib/data/session";
 import { NewMeetingForm } from "./new-meeting-form";
 
 export default async function MeetingsPage() {
   const [meetings, canWrite] = await Promise.all([getMeetings(), canWriteMeetings()]);
+  // The decision log has no live data model yet — demo only, never shown to clients.
+  const decisions = isDemoMode() ? DECISION_LOG : [];
   const upcoming = meetings.filter((m) => m.status === "Scheduled");
   const past = meetings.filter((m) => m.status === "Completed");
 
@@ -105,8 +108,14 @@ export default async function MeetingsPage() {
                 Documented Investment Committee and advisor decisions.
               </p>
             </div>
+            {decisions.length === 0 && (
+              <p className="text-[13px] leading-relaxed text-ink-muted">
+                No documented decisions yet. As the family makes decisions with
+                Lodestone, each one is recorded here with its rationale.
+              </p>
+            )}
             <ol className="relative space-y-5 border-l border-hairline pl-5">
-              {DECISION_LOG.map((d) => (
+              {decisions.map((d) => (
                 <li key={d.id} className="relative">
                   <span className="absolute -left-[27px] top-1 h-2.5 w-2.5 rounded-full border-2 border-card bg-brand" />
                   <div className="flex items-center justify-between gap-2">

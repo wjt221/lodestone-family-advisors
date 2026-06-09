@@ -36,11 +36,22 @@ const MOCK_CLIENT_SUMMARY: ClientSummary = {
   asOf: MOCK_CLIENT.asOf,
 };
 
+// Secure mode must NEVER surface demo data: when no client is resolvable we
+// return a neutral placeholder, not the mock client.
+const NO_CLIENT: ClientSummary = {
+  id: "",
+  name: "No client assigned",
+  shortName: "",
+  relationshipSince: "",
+  reportingCurrency: "USD",
+  asOf: "",
+};
+
 export async function getActiveClient(): Promise<ClientSummary> {
   if (!isSupabaseConfigured()) return MOCK_CLIENT_SUMMARY;
 
   const ctx = await getSessionContext();
-  if (!ctx.clientId) return MOCK_CLIENT_SUMMARY;
+  if (!ctx.clientId) return NO_CLIENT;
 
   const supabase = await createServerSupabase();
   const res = await supabase
@@ -50,7 +61,7 @@ export async function getActiveClient(): Promise<ClientSummary> {
     .maybeSingle();
   const data = res.data as ClientRow | null;
 
-  if (!data) return MOCK_CLIENT_SUMMARY;
+  if (!data) return NO_CLIENT;
   return {
     id: data.id,
     name: data.name,
@@ -67,7 +78,7 @@ export async function getEntities(): Promise<EntitySummary[]> {
   }
 
   const ctx = await getSessionContext();
-  if (!ctx.clientId) return MOCK_ENTITIES.map((e) => ({ ...e }));
+  if (!ctx.clientId) return [];
 
   const supabase = await createServerSupabase();
   const res = await supabase

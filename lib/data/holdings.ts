@@ -66,8 +66,9 @@ function mapRow(row: HoldingRow): Holding {
 export async function getHoldings(): Promise<Holding[]> {
   if (!isSupabaseConfigured()) return MOCK_HOLDINGS;
 
+  // Secure mode never falls back to demo data.
   const ctx = await getSessionContext();
-  if (!ctx.clientId) return MOCK_HOLDINGS;
+  if (!ctx.clientId) return [];
 
   const supabase = await createServerSupabase();
   const res = await supabase
@@ -79,7 +80,6 @@ export async function getHoldings(): Promise<Holding[]> {
     .order("value", { ascending: false });
   const rows = (res.data ?? []) as HoldingRow[];
 
-  if (rows.length === 0) return MOCK_HOLDINGS;
   return rows.map(mapRow);
 }
 
@@ -115,8 +115,9 @@ interface DetailedRow extends HoldingRow {
 export async function getHoldingsDetailed(): Promise<HoldingView[]> {
   if (!isSupabaseConfigured()) return mockDetailed();
 
+  // Secure mode never falls back to demo data.
   const ctx = await getSessionContext();
-  if (!ctx.clientId) return mockDetailed();
+  if (!ctx.clientId) return [];
 
   const supabase = await createServerSupabase();
   const res = await supabase
@@ -128,7 +129,6 @@ export async function getHoldingsDetailed(): Promise<HoldingView[]> {
     .order("value", { ascending: false });
   const rows = (res.data ?? []) as unknown as DetailedRow[];
 
-  if (rows.length === 0) return mockDetailed();
   return rows.map((r) => ({
     id: r.id,
     name: r.name,

@@ -90,7 +90,7 @@ export function NewDocumentForm() {
         </div>
 
         <Field label="Owner" hint="Who prepared or owns this document">
-          <input name="owner" placeholder="Sarah Chen, CFA" className={inputClass} />
+          <input name="owner" placeholder="Owner or preparer" className={inputClass} />
         </Field>
 
         {error ? <FormError message={error} /> : null}

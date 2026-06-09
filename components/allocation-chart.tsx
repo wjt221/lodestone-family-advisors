@@ -29,13 +29,34 @@ function ChartTooltip({
   );
 }
 
-export function AllocationChart({ height = 260 }: { height?: number }) {
-  const data = allocationByClass().map((c) => ({
-    name: c.assetClass,
-    value: c.pct,
-    rawValue: c.value,
-    color: c.color,
-  }));
+export interface AllocationSlice {
+  label: string;
+  pct: number;
+  value: number;
+  color: string;
+}
+
+export function AllocationChart({
+  height = 260,
+  slices,
+  centerLabel,
+  centerValue,
+}: {
+  height?: number;
+  /** Real allocation data; falls back to the demo allocation when absent. */
+  slices?: AllocationSlice[];
+  centerLabel?: string;
+  centerValue?: string;
+}) {
+  const data = (
+    slices ??
+    allocationByClass().map((c) => ({
+      label: c.assetClass,
+      pct: c.pct,
+      value: c.value,
+      color: c.color,
+    }))
+  ).map((c) => ({ name: c.label, value: c.pct, rawValue: c.value, color: c.color }));
 
   return (
     <div className="relative w-full" style={{ height }}>
@@ -60,9 +81,10 @@ export function AllocationChart({ height = 260 }: { height?: number }) {
         </PieChart>
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <p className="eyebrow">Total AUM</p>
+        <p className="eyebrow">{centerLabel ?? "Total AUM"}</p>
         <p className="tnum font-serif text-[28px] font-medium leading-none text-ink">
-          {CLIENT.aum >= 1_000_000 ? `$${(CLIENT.aum / 1_000_000).toFixed(1)}M` : ""}
+          {centerValue ??
+            (CLIENT.aum >= 1_000_000 ? `$${(CLIENT.aum / 1_000_000).toFixed(1)}M` : "")}
         </p>
       </div>
     </div>

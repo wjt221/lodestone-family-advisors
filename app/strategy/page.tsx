@@ -5,6 +5,9 @@ import { SectionHeading } from "@/components/section";
 import { Panel } from "@/components/panel";
 import { StatusPill, toneForLabel } from "@/components/status-pill";
 import { DISCOVERY, type DiscoveryState } from "@/lib/mock-data";
+import { isDemoMode } from "@/lib/data/session";
+import { getActiveClient } from "@/lib/data/clients";
+import { EmptyState } from "@/components/empty-state";
 
 const STATE_WEIGHT: Record<DiscoveryState, number> = {
   Complete: 100,
@@ -41,7 +44,27 @@ const HORIZONS = [
   },
 ];
 
-export default function StrategyPage() {
+export default async function StrategyPage() {
+  // The discovery process is not yet populated for live clients; never show demo content.
+  if (!isDemoMode()) {
+    const client = await getActiveClient();
+    return (
+      <div>
+        <PageHeader
+          eyebrow="Discovery & Governance"
+          title="The family's investment process"
+          lede="A structured discovery of objectives, liquidity needs, risk tolerance, and governance — the foundation every allocation and policy decision rests on."
+          status={{ label: "In Preparation", tone: "info" }}
+          client={{ name: client.name, asOf: client.asOf }}
+        />
+        <EmptyState
+          title="Discovery is underway with your advisor"
+          description="Lodestone is documenting the family's objectives, liquidity needs, risk tolerance, and governance preferences. The structured discovery record will appear here for review."
+        />
+      </div>
+    );
+  }
+
   const completion = Math.round(
     DISCOVERY.reduce((s, d) => s + STATE_WEIGHT[d.state], 0) / DISCOVERY.length,
   );

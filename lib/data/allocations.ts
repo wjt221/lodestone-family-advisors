@@ -20,8 +20,9 @@ const mockRanges = (): PolicyRangeView[] =>
 export async function getPolicyRanges(): Promise<PolicyRangeView[]> {
   if (!isSupabaseConfigured()) return mockRanges();
 
+  // Secure mode never falls back to demo data.
   const ctx = await getSessionContext();
-  if (!ctx.clientId) return mockRanges();
+  if (!ctx.clientId) return [];
 
   const supabase = await createServerSupabase();
   const res = await supabase
@@ -31,7 +32,6 @@ export async function getPolicyRanges(): Promise<PolicyRangeView[]> {
     .order("target_pct", { ascending: false });
   const rows = res.data ?? [];
 
-  if (rows.length === 0) return mockRanges();
   return rows.map((r) => ({
     assetClass: r.asset_class,
     min: Number(r.min_pct),

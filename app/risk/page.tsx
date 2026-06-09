@@ -5,13 +5,11 @@ import { Stat } from "@/components/stat";
 import { StatusPill, toneForLabel } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
 import { type RiskSeverity } from "@/lib/mock-data";
-import {
-  illiquidPct,
-  marketMix,
-  allocationByClass,
-  fmtPct,
-} from "@/lib/calculations";
+import { fmtPct } from "@/lib/calculations";
 import { getRiskRegister, canWriteRisk, type RiskView } from "@/lib/data/risk";
+import { getHoldingsDetailed } from "@/lib/data/holdings";
+import { getActiveClient } from "@/lib/data/clients";
+import { breakdownBy, illiquidPctOf, marketMixOf } from "@/lib/portfolio-math";
 import { NewRiskForm } from "./new-risk-form";
 
 const SEVERITY_TONE: Record<RiskSeverity, "critical" | "caution" | "info"> = {
@@ -70,10 +68,15 @@ function RiskRow({ r }: { r: RiskView }) {
 }
 
 export default async function RiskPage() {
-  const [register, canWrite] = await Promise.all([getRiskRegister(), canWriteRisk()]);
-  const mix = marketMix();
-  const operating =
-    allocationByClass().find((c) => c.assetClass === "Direct / Operating")?.pct ?? 0;
+  const [register, canWrite, holdings, client] = await Promise.all([
+    getRiskRegister(),
+    canWriteRisk(),
+    getHoldingsDetailed(),
+    getActiveClient(),
+  ]);
+  const mix = marketMixOf(holdings);
+  const byClass = breakdownBy(holdings, (h) => h.assetClass);
+  const topClass = byClass[0] ?? null;
   const elevated = register.filter((r) => r.severity === "Elevated");
   const reviewQueue = register.filter((r) => REVIEW_STATUSES.has(r.status));
 
@@ -84,6 +87,7 @@ export default async function RiskPage() {
         title="Is risk being taken intentionally?"
         lede="A standing register of the risks specific to a family office — concentration, illiquidity, managers, leverage, operating businesses, tax, governance, and behavior. The aim is deliberate risk, reviewed on a cadence, not a single score."
         status={{ label: "Discussion Point", tone: "info" }}
+        client={{ name: client.name, asOf: client.asOf }}
       />
 
       {/* Summary */}
@@ -92,14 +96,14 @@ export default async function RiskPage() {
           <Stat
             label="Elevated factors"
             value={String(elevated.length)}
-            sub={`Of ${register.length} on the register`}
-            tone="critical"
+            sub={register.length ? `Of ${register.length} on the register` : "Register not yet populated"}
+            tone={elevated.length ? "critical" : undefined}
           />
         </Panel>
         <Panel className="p-5">
           <Stat
             label="Illiquid allocation"
-            value={fmtPct(illiquidPct(), 0)}
+            value={fmtPct(illiquidPctOf(holdings), 0)}
             sub="Multi-year and illiquid"
             tone="caution"
           />
@@ -108,15 +112,15 @@ export default async function RiskPage() {
           <Stat
             label="Private markets"
             value={fmtPct(mix.privatePct, 0)}
-            sub={`Ceiling ${mix.ceiling}%`}
+            sub="Of total investments"
             tone="caution"
           />
         </Panel>
         <Panel className="p-5">
           <Stat
-            label="Operating businesses"
-            value={fmtPct(operating, 0)}
-            sub="Ceiling 15%"
+            label="Largest asset class"
+            value={topClass ? fmtPct(topClass.pct, 0) : "—"}
+            sub={topClass?.label ?? ""}
             tone="caution"
           />
         </Panel>
@@ -132,6 +136,15 @@ export default async function RiskPage() {
           description="The factors actively requiring advisor or committee attention this quarter."
         />
         <div className="space-y-3">
+          {reviewQueue.length === 0 && (
+            <Panel className="p-5">
+              <p className="text-[13px] leading-relaxed text-ink-muted">
+                The standing risk register is being prepared with your advisor.
+                Concentration, illiquidity, manager, and governance factors will be
+                tracked here and reviewed each quarter.
+              </p>
+            </Panel>
+          )}
           {reviewQueue.map((r) => (
             <RiskRow key={r.id} r={r} />
           ))}
