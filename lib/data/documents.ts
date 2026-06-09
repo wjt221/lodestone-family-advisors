@@ -26,8 +26,9 @@ export async function getDocuments(): Promise<DocumentView[]> {
     return MOCK_DOCUMENTS.map((d) => ({ ...d }));
   }
 
+  // Secure mode never falls back to demo data.
   const ctx = await getSessionContext();
-  if (!ctx.clientId) return MOCK_DOCUMENTS.map((d) => ({ ...d }));
+  if (!ctx.clientId) return [];
 
   const supabase = await createServerSupabase();
   const res = await supabase

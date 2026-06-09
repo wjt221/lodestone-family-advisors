@@ -104,7 +104,7 @@ export function NewMeetingForm() {
           <textarea
             name="attendees"
             rows={3}
-            placeholder={"Sarah Chen, CFA\nJonathan Atwater"}
+            placeholder={"Advisor name\nFamily member"}
             className={inputClass}
           />
         </Field>

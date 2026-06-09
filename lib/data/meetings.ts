@@ -28,10 +28,9 @@ export async function getMeetings(): Promise<MeetingView[]> {
     return MOCK_MEETINGS.map((m) => ({ ...m, attendees: [...m.attendees], agenda: [...m.agenda] }));
   }
 
+  // Secure mode never falls back to demo data.
   const ctx = await getSessionContext();
-  if (!ctx.clientId) {
-    return MOCK_MEETINGS.map((m) => ({ ...m, attendees: [...m.attendees], agenda: [...m.agenda] }));
-  }
+  if (!ctx.clientId) return [];
 
   const supabase = await createServerSupabase();
   const res = await supabase

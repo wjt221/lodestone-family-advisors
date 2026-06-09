@@ -5,6 +5,9 @@ import { Panel } from "@/components/panel";
 import { Stat } from "@/components/stat";
 import { StatusPill } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
+import { isDemoMode } from "@/lib/data/session";
+import { getActiveClient } from "@/lib/data/clients";
+import { EmptyState } from "@/components/empty-state";
 
 type WsState = "Complete" | "In progress" | "Open";
 
@@ -127,7 +130,27 @@ const WS_ICON: Record<WsState, React.ReactNode> = {
   Open: <Circle className="h-3.5 w-3.5 text-ink-muted/50" />,
 };
 
-export default function DiligencePage() {
+export default async function DiligencePage() {
+  // Diligence subjects are not yet populated for live clients; never show demo content.
+  if (!isDemoMode()) {
+    const client = await getActiveClient();
+    return (
+      <div>
+        <PageHeader
+          eyebrow="Manager & Deal Diligence"
+          title="Diligence with rigor"
+          lede="Disciplined manager and deal diligence is one of the clearest ways an advisor improves outcomes. Each subject runs the same workstreams and clears the same gates before any commitment."
+          status={{ label: "In Preparation", tone: "info" }}
+          client={{ name: client.name, asOf: client.asOf }}
+        />
+        <EmptyState
+          title="No diligence subjects under review yet"
+          description="When a manager or deal enters diligence, its workstreams, open questions, and decision gates will be tracked here."
+        />
+      </div>
+    );
+  }
+
   const totalOpen = SUBJECTS.reduce((s, d) => s + d.openQuestions.length, 0);
   const inDiligence = SUBJECTS.length;
 

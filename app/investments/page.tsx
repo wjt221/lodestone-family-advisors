@@ -10,6 +10,9 @@ import {
   type PipelineStage,
 } from "@/lib/mock-data";
 import { fmtMillions } from "@/lib/calculations";
+import { isDemoMode } from "@/lib/data/session";
+import { getActiveClient } from "@/lib/data/clients";
+import { EmptyState } from "@/components/empty-state";
 
 const STAGE_TONE: Record<PipelineStage, Tone> = {
   Sourced: "neutral",
@@ -112,7 +115,27 @@ function PipelineCard({ p }: { p: PipelineItem }) {
   );
 }
 
-export default function InvestmentsPage() {
+export default async function InvestmentsPage() {
+  // The IC pipeline is not yet populated for live clients; never show demo deals.
+  if (!isDemoMode()) {
+    const client = await getActiveClient();
+    return (
+      <div>
+        <PageHeader
+          eyebrow="Investment Pipeline"
+          title="Decisions in front of the committee"
+          lede="A disciplined pipeline for evaluating new opportunities — merits, risks, fees, liquidity terms, and tax considerations, documented before any commitment."
+          status={{ label: "In Preparation", tone: "info" }}
+          client={{ name: client.name, asOf: client.asOf }}
+        />
+        <EmptyState
+          title="No opportunities in the pipeline yet"
+          description="When Lodestone brings an opportunity to the family, it will appear here with its merits, risks, fees, and terms documented for Investment Committee review."
+        />
+      </div>
+    );
+  }
+
   const counts = new Map<PipelineStage, number>();
   for (const p of PIPELINE) counts.set(p.stage, (counts.get(p.stage) ?? 0) + 1);
 

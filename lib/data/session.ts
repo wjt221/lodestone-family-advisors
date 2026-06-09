@@ -96,3 +96,13 @@ async function resolveClientId(
 export function canSeeAdvisorContent(ctx: SessionContext): boolean {
   return !ctx.configured || ctx.role === "advisor" || ctx.role === "admin";
 }
+
+/**
+ * True when running against mock data (no Supabase). Pages whose feature has no
+ * real data model yet use this to show an honest "in preparation" state in
+ * secure mode instead of demo content — demo data must never appear to a
+ * signed-in client.
+ */
+export function isDemoMode(): boolean {
+  return !isSupabaseConfigured();
+}

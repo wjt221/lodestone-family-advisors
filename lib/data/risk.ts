@@ -41,18 +41,9 @@ export async function getRiskRegister(): Promise<RiskView[]> {
     }));
   }
 
+  // Secure mode never falls back to demo data.
   const ctx = await getSessionContext();
-  if (!ctx.clientId) {
-    return MOCK_RISK.map((r) => ({
-      id: r.id,
-      factor: r.factor,
-      severity: r.severity,
-      status: r.status,
-      exposure: r.exposure,
-      observation: r.observation,
-      owner: r.owner,
-    }));
-  }
+  if (!ctx.clientId) return [];
 
   const supabase = await createServerSupabase();
   const res = await supabase

@@ -34,8 +34,9 @@ const MOCK_PERFORMANCE: PerformanceView[] = [
 export async function getPerformance(): Promise<PerformanceView[]> {
   if (!isSupabaseConfigured()) return MOCK_PERFORMANCE;
 
+  // Secure mode never falls back to demo data.
   const ctx = await getSessionContext();
-  if (!ctx.clientId) return MOCK_PERFORMANCE;
+  if (!ctx.clientId) return [];
 
   const supabase = await createServerSupabase();
   const res = await supabase
@@ -47,7 +48,6 @@ export async function getPerformance(): Promise<PerformanceView[]> {
     .order("sort_order", { ascending: true });
   const rows = (res.data ?? []) as PerformanceSummaryRow[];
 
-  if (rows.length === 0) return MOCK_PERFORMANCE;
   return rows.map((r) => ({
     scope: r.scope,
     label: r.label,

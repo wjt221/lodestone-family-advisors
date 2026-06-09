@@ -1,259 +1,182 @@
 import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section";
-import { Panel, PanelHeader } from "@/components/panel";
+import { Panel } from "@/components/panel";
 import { Stat } from "@/components/stat";
 import { StatusPill } from "@/components/status-pill";
-import {
-  liquidityReserve,
-  liquidityCoverage,
-  totalUnfunded,
-  fmtMillions,
-  fmtPct,
-} from "@/lib/calculations";
-import { LIQUIDITY_NEEDS, CAPITAL_CALLS } from "@/lib/mock-data";
+import { getHoldingsDetailed } from "@/lib/data/holdings";
+import { getActiveClient } from "@/lib/data/clients";
+import { breakdownBy, totalValue, totalUnfundedOf } from "@/lib/portfolio-math";
+import { fmtMillions, fmtPct } from "@/lib/calculations";
 
-const SEG = [
-  { key: "reserve", label: "Cash reserve", color: "var(--positive)" },
-  { key: "fixed", label: "Fixed income", color: "var(--info)" },
-  { key: "equity", label: "Public equity", color: "var(--caution)" },
-] as const;
+const LADDER_ORDER = ["Daily", "Quarterly", "Annual", "Multi-Year", "Illiquid"];
 
-export default function LiquidityPage() {
-  const reserve = liquidityReserve();
-  const coverage = liquidityCoverage();
+export default async function LiquidityPage() {
+  const [holdings, client] = await Promise.all([getHoldingsDetailed(), getActiveClient()]);
+
+  const total = totalValue(holdings) || 1;
+  const unfunded = totalUnfundedOf(holdings);
+  const ladder = breakdownBy(holdings, (h) => h.liquidity).sort(
+    (a, b) => LADDER_ORDER.indexOf(a.label) - LADDER_ORDER.indexOf(b.label),
+  );
+  const daily = ladder.find((l) => l.label === "Daily")?.value ?? 0;
+  const quarterly = ladder.find((l) => l.label === "Quarterly")?.value ?? 0;
+  const accessible = daily + quarterly;
+  const coverage = unfunded > 0 ? daily / unfunded : null;
+
+  const unfundedHoldings = holdings
+    .filter((h) => (h.unfunded ?? 0) > 0)
+    .sort((a, b) => (b.unfunded ?? 0) - (a.unfunded ?? 0));
+  const unfundedByEntity = breakdownBy(unfundedHoldings, (h) => h.entityName || "Managed Accounts")
+    .map((row) => ({
+      ...row,
+      unfunded: unfundedHoldings
+        .filter((h) => (h.entityName || "Managed Accounts") === row.label)
+        .reduce((s, h) => s + (h.unfunded ?? 0), 0),
+    }))
+    .sort((a, b) => b.unfunded - a.unfunded);
 
   return (
     <div>
       <PageHeader
-        eyebrow="Liquidity Discipline"
-        title="Coverage that prevents forced selling"
-        lede="Liquidity planning is how Lodestone keeps the family from selling long-horizon assets at the wrong time. We map forward obligations against the sources available to meet them, by reliability of access."
+        eyebrow="Liquidity Planning"
+        title="Can we meet every obligation without forced selling?"
+        lede="Liquidity discipline means knowing how quickly capital can be accessed, and holding enough in reliable form to meet capital calls and family needs without selling long-term assets at the wrong time."
         status={{ label: "Discussion Point", tone: "info" }}
+        client={{ name: client.name, asOf: client.asOf }}
       />
 
-      {/* Reserve status */}
+      {/* Summary band */}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Panel className="p-5">
           <Stat
-            label="Dedicated reserve"
-            value={fmtMillions(reserve.reserve)}
-            sub={`${fmtPct(reserve.pct)} of AUM`}
-            tone="critical"
+            label="Daily-liquid assets"
+            value={fmtMillions(daily)}
+            sub={`${fmtPct((daily / total) * 100, 0)} of investments`}
           />
         </Panel>
         <Panel className="p-5">
           <Stat
-            label="Policy reserve floor"
-            value={`${reserve.min}–${reserve.max}%`}
-            sub={`Target ${reserve.target}%`}
+            label="Accessible ≤ quarterly"
+            value={fmtMillions(accessible)}
+            sub={`${fmtPct((accessible / total) * 100, 0)} of investments`}
           />
-        </Panel>
-        <Panel className="p-5">
-          <p className="eyebrow mb-2">Reserve status</p>
-          <StatusPill>{reserve.status}</StatusPill>
-          <p className="mt-2.5 text-[12px] leading-relaxed text-ink-muted">
-            Reserve sits below the proposed floor. Review before new illiquid
-            commitments.
-          </p>
         </Panel>
         <Panel className="p-5">
           <Stat
             label="Unfunded commitments"
-            value={fmtMillions(totalUnfunded())}
-            sub="Across 3 private funds"
+            value={fmtMillions(unfunded)}
+            sub="Callable by managers"
             tone="caution"
+          />
+        </Panel>
+        <Panel className="p-5">
+          <Stat
+            label="Call coverage"
+            value={coverage != null ? `${coverage.toFixed(1)}×` : "—"}
+            sub="Daily-liquid ÷ unfunded"
+            tone={coverage != null && coverage < 1 ? "critical" : "positive"}
           />
         </Panel>
       </div>
 
-      {/* Coverage by horizon */}
+      {/* Liquidity ladder */}
       <section className="mb-10">
         <SectionHeading
-          eyebrow="Forward coverage"
-          title="Obligations vs. sources, by horizon"
-          description="Each bar represents that horizon's total obligations, filled by the sources available to meet them. Reaching into public equity signals potential forced-selling risk."
+          eyebrow="Access"
+          title="The liquidity ladder"
+          description="How quickly each tier of the portfolio can be converted to cash, from daily-liquid securities to multi-year fund structures and directly held assets."
+        />
+        <Panel inset>
+          <ul className="divide-y divide-hairline">
+            {ladder.map((l) => (
+              <li
+                key={l.label}
+                className="grid grid-cols-1 gap-3 px-6 py-4 sm:grid-cols-[140px_1fr_220px] sm:items-center"
+              >
+                <StatusPill
+                  tone={l.label === "Daily" ? "positive" : l.label === "Illiquid" ? "critical" : "caution"}
+                  dot={false}
+                >
+                  {l.label}
+                </StatusPill>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                  <div className="h-full rounded-full bg-brand/70" style={{ width: `${l.pct}%` }} />
+                </div>
+                <p className="tnum text-right text-[13px] text-ink">
+                  <span className="font-medium">{fmtMillions(l.value, 1)}</span>
+                  <span className="text-ink-muted">
+                    {" "}
+                    · {fmtPct(l.pct)} · {l.count} positions
+                  </span>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      </section>
+
+      {/* Unfunded by entity */}
+      <section className="mb-10">
+        <SectionHeading
+          eyebrow="Obligations"
+          title="Unfunded commitments by entity"
+          description="Where future capital calls will land. Calls are drawn at the manager's discretion, typically over the next several years."
         />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {coverage.map((h) => {
-            const segReserve = h.reserveCover;
-            const segFixed = h.liquidCover - h.reserveCover;
-            const segEquity = Math.max(0, h.need - h.liquidCover);
-            const widths = {
-              reserve: (segReserve / h.need) * 100,
-              fixed: (segFixed / h.need) * 100,
-              equity: (segEquity / h.need) * 100,
-            };
-            const needsEquity = segEquity > 0;
-            return (
-              <Panel key={h.horizon} className="p-5">
-                <div className="mb-1 flex items-baseline justify-between">
-                  <h3 className="font-serif text-[17px] font-medium text-ink">
-                    {h.horizon}
-                  </h3>
-                  <span className="tnum text-[13px] font-medium text-ink-muted">
-                    {h.coverageRatio.toFixed(1)}× liquid
-                  </span>
-                </div>
-                <p className="tnum mb-4 text-[13px] text-ink-muted">
-                  {fmtMillions(h.need)} of obligations
-                </p>
-
-                <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-secondary">
-                  <div
-                    style={{ width: `${widths.reserve}%`, background: SEG[0].color }}
-                  />
-                  <div
-                    style={{ width: `${widths.fixed}%`, background: SEG[1].color }}
-                  />
-                  <div
-                    style={{ width: `${widths.equity}%`, background: SEG[2].color }}
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <StatusPill tone={needsEquity ? "caution" : "positive"} dot={false}>
-                    {needsEquity
-                      ? "Requires public equity"
-                      : "Covered by reserve + fixed income"}
-                  </StatusPill>
-                  {needsEquity && (
-                    <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
-                      Meeting this horizon would require drawing on public equity —
-                      a behavioral risk to manage in a drawdown.
-                    </p>
-                  )}
-                </div>
-              </Panel>
-            );
-          })}
-        </div>
-        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
-          {SEG.map((s) => (
-            <span key={s.key} className="flex items-center gap-2 text-[12px] text-ink-muted">
-              <span
-                className="h-2.5 w-2.5 rounded-[3px]"
-                style={{ background: s.color }}
-              />
-              {s.label}
-            </span>
+          {unfundedByEntity.map((e) => (
+            <Panel key={e.label} className="p-5">
+              <p className="truncate text-[14px] font-medium text-ink">{e.label}</p>
+              <p className="tnum mt-1 text-[20px] font-medium text-caution">
+                {fmtMillions(e.unfunded, 2)}
+              </p>
+              <p className="text-[12px] text-ink-muted">{e.count} commitments</p>
+            </Panel>
           ))}
         </div>
       </section>
 
-      {/* Obligations & capital calls */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Panel inset>
-          <div className="px-6 pt-6">
-            <PanelHeader
-              title="Forward obligations"
-              description="Cumulative, by horizon."
-            />
-          </div>
-          <table className="w-full text-[13px]">
+      {/* Largest unfunded positions */}
+      <section>
+        <SectionHeading eyebrow="Detail" title="Largest outstanding commitments" />
+        <Panel inset className="overflow-x-auto">
+          <table className="w-full min-w-[680px] text-[13px]">
             <thead>
-              <tr className="border-y border-hairline">
-                <th className="px-6 py-2.5 text-left font-medium text-ink-muted">
-                  Obligation
-                </th>
-                <th className="tnum px-3 py-2.5 text-right font-medium text-ink-muted">
-                  12-mo
-                </th>
-                <th className="tnum px-3 py-2.5 text-right font-medium text-ink-muted">
-                  24-mo
-                </th>
-                <th className="tnum px-6 py-2.5 text-right font-medium text-ink-muted">
-                  36-mo
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-hairline">
-              {LIQUIDITY_NEEDS.map((n) => (
-                <tr key={n.id}>
-                  <td className="px-6 py-3">
-                    <p className="font-medium text-ink">{n.label}</p>
-                    <p className="text-[11.5px] text-ink-muted">{n.description}</p>
-                  </td>
-                  <td className="tnum px-3 py-3 text-right text-ink">
-                    {fmtMillions(n.m12, 2)}
-                  </td>
-                  <td className="tnum px-3 py-3 text-right text-ink">
-                    {fmtMillions(n.m24, 2)}
-                  </td>
-                  <td className="tnum px-6 py-3 text-right text-ink">
-                    {fmtMillions(n.m36, 2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-hairline bg-secondary/40">
-                <td className="px-6 py-3 font-medium text-ink">Total</td>
-                {(["m12", "m24", "m36"] as const).map((k, i) => (
-                  <td
-                    key={k}
-                    className={`tnum py-3 text-right font-semibold text-ink ${
-                      i === 2 ? "px-6" : "px-3"
-                    }`}
+              <tr className="border-b border-hairline">
+                {["Holding", "Entity", "Committed", "Contributed", "Unfunded"].map((h, i) => (
+                  <th
+                    key={h}
+                    className={`px-5 py-3 font-medium text-ink-muted ${i >= 2 ? "text-right" : "text-left"}`}
                   >
-                    {fmtMillions(
-                      LIQUIDITY_NEEDS.reduce((s, n) => s + n[k], 0),
-                      2,
-                    )}
-                  </td>
+                    {h}
+                  </th>
                 ))}
               </tr>
-            </tfoot>
-          </table>
-        </Panel>
-
-        <Panel inset>
-          <div className="px-6 pt-6">
-            <PanelHeader
-              title="Capital call planning"
-              description="Unfunded commitments and expected drawdown windows."
-            />
-          </div>
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-y border-hairline">
-                <th className="px-6 py-2.5 text-left font-medium text-ink-muted">
-                  Fund
-                </th>
-                <th className="tnum px-3 py-2.5 text-right font-medium text-ink-muted">
-                  Unfunded
-                </th>
-                <th className="px-6 py-2.5 text-right font-medium text-ink-muted">
-                  Window
-                </th>
-              </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
-              {CAPITAL_CALLS.map((c) => (
-                <tr key={c.fund}>
-                  <td className="px-6 py-3">
-                    <p className="font-medium text-ink">{c.fund}</p>
-                    <p className="tnum text-[11.5px] text-ink-muted">
-                      {fmtMillions(c.called, 2)} of {fmtMillions(c.commitment, 1)}{" "}
-                      called
-                    </p>
+              {unfundedHoldings.slice(0, 12).map((h) => (
+                <tr key={h.id}>
+                  <td className="max-w-[280px] truncate px-5 py-3 font-medium text-ink">{h.name}</td>
+                  <td className="px-5 py-3 text-ink-muted">{h.entityName || "Managed Accounts"}</td>
+                  <td className="tnum px-5 py-3 text-right text-ink-muted">
+                    {h.commitment ? fmtMillions(h.commitment, 2) : "—"}
                   </td>
-                  <td className="tnum px-3 py-3 text-right font-medium text-ink">
-                    {fmtMillions(c.unfunded, 2)}
+                  <td className="tnum px-5 py-3 text-right text-ink-muted">
+                    {h.contributions ? fmtMillions(h.contributions, 2) : "—"}
                   </td>
-                  <td className="px-6 py-3 text-right text-[12px] text-ink-muted">
-                    {c.expectedWindow}
+                  <td className="tnum px-5 py-3 text-right font-medium text-caution">
+                    {fmtMillions(h.unfunded ?? 0, 2)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </Panel>
-      </div>
+      </section>
 
       <p className="mt-10 border-t border-hairline pt-5 text-[11px] leading-relaxed text-ink-muted">
-        Liquidity figures, obligations, and call windows are illustrative and for
-        discussion only. This is not investment advice. Reserve sizing and any
-        portfolio changes require advisor and Investment Committee review.
+        Liquidity tiers are classified from each holding&apos;s structure and may differ
+        from actual redemption terms. Nothing here is investment advice — liquidity
+        planning decisions are made with your advisor.
       </p>
     </div>
   );

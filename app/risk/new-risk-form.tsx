@@ -114,7 +114,7 @@ export function NewRiskForm() {
         </Field>
 
         <Field label="Owner">
-          <input name="owner" placeholder="Sarah Chen, CFA" className={inputClass} />
+          <input name="owner" placeholder="Owner or preparer" className={inputClass} />
         </Field>
 
         {error ? <FormError message={error} /> : null}

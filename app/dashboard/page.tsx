@@ -5,82 +5,108 @@ import { SectionHeading } from "@/components/section";
 import { Panel, PanelHeader } from "@/components/panel";
 import { Stat, MetricRow } from "@/components/stat";
 import { StatusPill } from "@/components/status-pill";
-import { ReviewFlag } from "@/components/review-flag";
 import { AllocationChart } from "@/components/allocation-chart";
-import { NetWorthChart } from "@/components/networth-chart";
+import { getHoldingsDetailed } from "@/lib/data/holdings";
+import { getActiveClient, getEntities } from "@/lib/data/clients";
+import { getPolicyRanges } from "@/lib/data/allocations";
+import { getPerformance } from "@/lib/data/performance";
+import { getMeetings } from "@/lib/data/meetings";
+import { getRiskRegister } from "@/lib/data/risk";
 import {
-  ATTENTION_ITEMS,
-  DISCOVERY,
-  MEETINGS,
-  PERFORMANCE,
-  RISK_REGISTER,
-  PIPELINE,
-} from "@/lib/mock-data";
-import {
-  allocationByClass,
-  marketMix,
-  liquidityReserve,
-  liquidityCoverage,
-  concentrationWatchlist,
-  fmtMillions,
-  fmtPct,
-  fmtSignedPct,
-} from "@/lib/calculations";
+  breakdownBy,
+  marketMixOf,
+  illiquidPctOf,
+  totalValue,
+  totalUnfundedOf,
+  rangeRows,
+} from "@/lib/portfolio-math";
+import { fmtMillions, fmtPct, fmtSignedPct } from "@/lib/calculations";
 
-export default function DashboardPage() {
-  const classes = allocationByClass();
-  const mix = marketMix();
-  const reserve = liquidityReserve();
-  const coverage12 = liquidityCoverage()[0];
-  const concentration = concentrationWatchlist();
+const pct = (v: number | null, digits = 1) =>
+  v == null ? "—" : `${(v * 100).toFixed(digits)}%`;
 
-  const elevatedRisks = RISK_REGISTER.filter((r) => r.severity === "Elevated");
-  const awaitingIC = PIPELINE.filter(
-    (p) => p.stage === "IC Review" || p.stage === "Approved for Advisor Discussion",
-  );
-  const nextMeeting = MEETINGS.find((m) => m.status === "Scheduled");
-  const discoveryComplete = DISCOVERY.filter((d) => d.state === "Complete").length;
+export default async function DashboardPage() {
+  const [holdings, client, entities, ranges, performance, meetings, risks] =
+    await Promise.all([
+      getHoldingsDetailed(),
+      getActiveClient(),
+      getEntities(),
+      getPolicyRanges(),
+      getPerformance(),
+      getMeetings(),
+      getRiskRegister(),
+    ]);
+
+  const total = totalValue(holdings);
+  const mix = marketMixOf(holdings);
+  const unfunded = totalUnfundedOf(holdings);
+  const byClass = breakdownBy(holdings, (h) => h.assetClass);
+  const outOfRange = rangeRows(holdings, ranges).filter((r) => r.status !== "Within range");
+
+  const totalPerf = performance.find((p) => p.scope === "total") ?? null;
+  const vsExpected =
+    totalPerf?.returnNet != null && totalPerf?.expectedReturn != null
+      ? totalPerf.returnNet - totalPerf.expectedReturn
+      : null;
+
+  const cashValue = holdings
+    .filter((h) => /cash/i.test(h.assetClass) || h.liquidity === "Daily")
+    .reduce((s, h) => s + h.value, 0);
+  const callCoverage = unfunded > 0 ? cashValue / unfunded : null;
+
+  const topPositions = [...holdings]
+    .filter((h) => !/managed accounts/i.test(h.name))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3);
+
+  const elevatedRisks = risks.filter((r) => r.severity === "Elevated");
+  const nextMeeting = meetings.find((m) => m.status === "Scheduled") ?? null;
 
   return (
     <div>
       <PageHeader
         eyebrow="Command Center"
         title="What needs attention this quarter"
-        lede="A working view of the Atwater Family Office — objectives, liquidity, risk, and the decisions in front of the Investment Committee. Every figure is illustrative and prepared for advisor review."
+        lede={`A working view of ${client.name} — exposure, liquidity, risk, and the decisions in front of the family. Every figure is prepared for advisor review.`}
         status={{ label: "Advisor Review Required", tone: "critical" }}
+        client={{ name: client.name, asOf: client.asOf }}
       />
 
       {/* ── Portfolio at a glance ─────────────────────────────────────────── */}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Panel className="p-5">
           <Stat
-            label="Total AUM"
-            value={fmtMillions(47_300_000)}
-            sub="Across 3 entities"
+            label="Total investments"
+            value={fmtMillions(total)}
+            sub={entities.length ? `Across ${entities.length} entities` : `${holdings.length} positions`}
           />
         </Panel>
         <Panel className="p-5">
           <Stat
-            label="YTD return · net"
-            value={fmtSignedPct(PERFORMANCE.ytd)}
-            sub={`Reference ${fmtSignedPct(PERFORMANCE.benchmarkYtd)}`}
-            tone="positive"
+            label="Return · net IRR"
+            value={pct(totalPerf?.returnNet ?? null)}
+            sub={
+              vsExpected != null
+                ? `${fmtSignedPct(vsExpected * 100)} vs expected`
+                : "Since inception"
+            }
+            tone={vsExpected == null || vsExpected >= 0 ? "positive" : "caution"}
           />
         </Panel>
         <Panel className="p-5">
           <Stat
             label="Private markets"
             value={fmtPct(mix.privatePct, 0)}
-            sub={`Framework ceiling ${mix.ceiling}%`}
+            sub={`Illiquid ${fmtPct(illiquidPctOf(holdings), 0)}`}
             tone="caution"
           />
         </Panel>
         <Panel className="p-5">
           <Stat
-            label="Liquidity reserve"
-            value={fmtPct(reserve.pct)}
-            sub={`Policy ${reserve.min}–${reserve.max}%`}
-            tone="critical"
+            label="Unfunded commitments"
+            value={fmtMillions(unfunded)}
+            sub="Future capital calls"
+            tone="caution"
           />
         </Panel>
       </div>
@@ -89,7 +115,7 @@ export default function DashboardPage() {
         <Panel className="lg:col-span-3">
           <PanelHeader
             title="Asset allocation"
-            description="By asset class, share of total AUM."
+            description="By asset class, share of total investments."
             action={
               <Link
                 href="/allocation"
@@ -100,11 +126,21 @@ export default function DashboardPage() {
             }
           />
           <div className="grid grid-cols-1 items-center gap-6 sm:grid-cols-2">
-            <AllocationChart height={240} />
+            <AllocationChart
+              height={240}
+              slices={byClass.map((c) => ({
+                label: c.label,
+                pct: c.pct,
+                value: c.value,
+                color: c.color,
+              }))}
+              centerLabel="Total"
+              centerValue={fmtMillions(total)}
+            />
             <ul className="space-y-1.5">
-              {classes.map((c) => (
+              {byClass.map((c) => (
                 <li
-                  key={c.assetClass}
+                  key={c.label}
                   className="flex items-center justify-between gap-3 py-1"
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
@@ -112,9 +148,7 @@ export default function DashboardPage() {
                       className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
                       style={{ background: c.color }}
                     />
-                    <span className="truncate text-[13px] text-ink">
-                      {c.assetClass}
-                    </span>
+                    <span className="truncate text-[13px] text-ink">{c.label}</span>
                   </span>
                   <span className="tnum shrink-0 text-[13px] font-medium text-ink">
                     {fmtPct(c.pct)}
@@ -127,97 +161,91 @@ export default function DashboardPage() {
 
         <Panel className="lg:col-span-2">
           <PanelHeader
-            title="Net worth trajectory"
-            description="Illustrative, year-end values."
+            title="Performance snapshot"
+            description="Net since-inception IRR vs the expected-return framework."
           />
-          <NetWorthChart height={172} />
-          <div className="mt-4 grid grid-cols-3 gap-2 border-t border-hairline pt-4">
-            <div>
-              <p className="text-[11px] text-ink-muted">1-year</p>
-              <p className="tnum text-[15px] font-medium text-positive">
-                {fmtSignedPct(PERFORMANCE.oneYear)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] text-ink-muted">3-yr ann.</p>
-              <p className="tnum text-[15px] font-medium text-ink">
-                {fmtSignedPct(PERFORMANCE.threeYearAnnualized)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] text-ink-muted">Inception</p>
-              <p className="tnum text-[15px] font-medium text-ink">
-                {fmtSignedPct(PERFORMANCE.inceptionCumulative)}
-              </p>
-            </div>
+          <div className="space-y-3">
+            {performance
+              .filter((p) => p.scope === "asset_class")
+              .slice(0, 7)
+              .map((p) => {
+                const delta =
+                  p.returnNet != null && p.expectedReturn != null
+                    ? p.returnNet - p.expectedReturn
+                    : null;
+                return (
+                  <div key={p.label} className="flex items-center justify-between gap-3 text-[13px]">
+                    <span className="truncate text-ink">{p.label}</span>
+                    <span className="tnum flex shrink-0 items-baseline gap-2">
+                      <span className="font-medium text-ink">{pct(p.returnNet)}</span>
+                      <span className={delta != null && delta < 0 ? "text-caution" : "text-positive"}>
+                        {delta != null ? `${delta >= 0 ? "+" : ""}${(delta * 100).toFixed(1)}%` : ""}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
           </div>
+          <Link
+            href="/performance"
+            className="mt-4 flex items-center gap-1 border-t border-hairline pt-3 text-[12px] font-medium text-ink-muted transition-colors hover:text-brand"
+          >
+            Full performance review <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
         </Panel>
       </div>
-
-      {/* ── What needs attention ──────────────────────────────────────────── */}
-      <section className="mb-10">
-        <SectionHeading
-          eyebrow="Review queue"
-          title="What needs attention"
-          description="Flags for advisor and committee review. These are observations and decisions to evaluate — not recommendations to trade."
-        />
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {ATTENTION_ITEMS.slice(0, 6).map((item) => (
-            <ReviewFlag key={item.id} item={item} />
-          ))}
-        </div>
-      </section>
 
       {/* ── Position summary band ─────────────────────────────────────────── */}
       <section className="mb-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel>
-          <PanelHeader title="Strategic alignment" />
-          <p className="text-[13px] leading-relaxed text-ink-muted">
-            {discoveryComplete} of {DISCOVERY.length} discovery areas confirmed.
-            Liquidity policy and risk calibration remain in review.
-          </p>
-          <div className="mt-4 space-y-1.5">
-            {DISCOVERY.map((d) => (
-              <div
-                key={d.id}
-                className="flex items-center justify-between gap-3 text-[13px]"
-              >
-                <span className="text-ink">{d.title}</span>
-                <StatusPill dot={false}>{d.state}</StatusPill>
-              </div>
-            ))}
-          </div>
+          <PanelHeader title="Allocation vs policy" />
+          {outOfRange.length === 0 ? (
+            <>
+              <StatusPill tone="positive">All classes within policy ranges</StatusPill>
+              <p className="mt-2.5 text-[13px] leading-relaxed text-ink-muted">
+                Positioning is consistent with the strategic asset allocation under
+                review with the family.
+              </p>
+            </>
+          ) : (
+            <ul className="space-y-2">
+              {outOfRange.map((r) => (
+                <li key={r.assetClass} className="flex items-center justify-between gap-3 text-[13px]">
+                  <span className="text-ink">{r.assetClass}</span>
+                  <StatusPill tone={r.status === "Above range" ? "caution" : "critical"} dot={false}>
+                    {r.status}
+                  </StatusPill>
+                </li>
+              ))}
+            </ul>
+          )}
           <Link
-            href="/strategy"
-            className="mt-5 flex items-center gap-1 text-[12px] font-medium text-ink-muted transition-colors hover:text-brand"
+            href="/allocation"
+            className="mt-4 flex items-center gap-1 text-[12px] font-medium text-ink-muted transition-colors hover:text-brand"
           >
-            Open strategy process <ArrowUpRight className="h-3.5 w-3.5" />
+            Review allocation <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </Panel>
 
         <Panel>
           <PanelHeader title="Liquidity position" />
           <Stat
-            label="12-month coverage"
-            value={`${coverage12.coverageRatio.toFixed(1)}×`}
-            sub={`${fmtMillions(coverage12.need)} of obligations`}
+            label="Liquid assets vs unfunded"
+            value={callCoverage != null ? `${callCoverage.toFixed(1)}×` : "—"}
+            sub={`${fmtMillions(cashValue)} liquid · ${fmtMillions(unfunded)} unfunded`}
           />
           <div className="mt-4 border-t border-hairline pt-3">
+            <MetricRow label="Daily-liquid holdings" value={fmtPct((cashValue / (total || 1)) * 100, 0)} />
             <MetricRow
-              label="Dedicated reserve"
-              value={`${fmtPct(reserve.pct)}`}
-              hint={`Policy floor ${reserve.min}%`}
-            />
-            <MetricRow
-              label="Reserve status"
-              value={<StatusPill>{reserve.status}</StatusPill>}
+              label="Multi-year / illiquid"
+              value={fmtPct(illiquidPctOf(holdings), 0)}
             />
           </div>
           <Link
-            href="/liquidity"
+            href="/portfolio"
             className="mt-3 flex items-center gap-1 text-[12px] font-medium text-ink-muted transition-colors hover:text-brand"
           >
-            Evaluate liquidity coverage <ArrowUpRight className="h-3.5 w-3.5" />
+            Unfunded commitment schedule <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </Panel>
 
@@ -226,20 +254,17 @@ export default function DashboardPage() {
           <Stat
             label="Elevated risk factors"
             value={String(elevatedRisks.length)}
-            sub="On the standing risk register"
-            tone="caution"
+            sub={risks.length ? "On the standing risk register" : "Register not yet populated"}
+            tone={elevatedRisks.length ? "caution" : undefined}
           />
           <div className="mt-4 border-t border-hairline pt-3">
-            <p className="mb-2 text-[12px] text-ink-muted">Concentration watchlist</p>
+            <p className="mb-2 text-[12px] text-ink-muted">Largest positions</p>
             <ul className="space-y-1.5">
-              {concentration.slice(0, 3).map((c) => (
-                <li
-                  key={c.name}
-                  className="flex items-center justify-between gap-3 text-[13px]"
-                >
-                  <span className="truncate text-ink">{c.name}</span>
+              {topPositions.map((h) => (
+                <li key={h.id} className="flex items-center justify-between gap-3 text-[13px]">
+                  <span className="truncate text-ink">{h.name}</span>
                   <span className="tnum shrink-0 font-medium text-ink">
-                    {fmtPct(c.pct, 0)}
+                    {fmtPct(h.allocationPct, 1)}
                   </span>
                 </li>
               ))}
@@ -254,82 +279,50 @@ export default function DashboardPage() {
         </Panel>
       </section>
 
-      {/* ── Upcoming decisions ────────────────────────────────────────────── */}
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {/* ── Governance ────────────────────────────────────────────── */}
+      <section>
+        <SectionHeading
+          eyebrow="Governance"
+          title="Upcoming decisions"
+          description="Items routed to the next family review with your advisor."
+        />
         <Panel>
-          <PanelHeader
-            title="Upcoming decisions"
-            description="Items routed to the next Investment Committee."
-          />
-          {nextMeeting && (
-            <div className="mb-4 rounded-lg border border-hairline bg-secondary/40 p-4">
+          {nextMeeting ? (
+            <div className="rounded-lg border border-hairline bg-secondary/40 p-4">
               <div className="flex items-center gap-2 text-[12px] text-ink-muted">
                 <CalendarDays className="h-4 w-4 text-brand" />
                 {nextMeeting.date} · {nextMeeting.time}
               </div>
-              <p className="mt-1.5 text-[14px] font-medium text-ink">
-                {nextMeeting.title}
-              </p>
+              <p className="mt-1.5 text-[14px] font-medium text-ink">{nextMeeting.title}</p>
               <ul className="mt-2 space-y-1">
                 {nextMeeting.agenda.map((a) => (
-                  <li
-                    key={a}
-                    className="flex items-start gap-2 text-[13px] text-ink-muted"
-                  >
+                  <li key={a} className="flex items-start gap-2 text-[13px] text-ink-muted">
                     <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand" />
                     {a}
                   </li>
                 ))}
               </ul>
             </div>
+          ) : (
+            <p className="text-[13px] leading-relaxed text-ink-muted">
+              No meetings scheduled yet. Your advisor will publish the governance
+              calendar here.
+            </p>
           )}
           <Link
             href="/meetings"
-            className="flex items-center gap-1 text-[12px] font-medium text-ink-muted transition-colors hover:text-brand"
-          >
-            View governance calendar <ArrowUpRight className="h-3.5 w-3.5" />
-          </Link>
-        </Panel>
-
-        <Panel>
-          <PanelHeader
-            title="Pipeline awaiting decision"
-            description="In or near Investment Committee review."
-          />
-          <ul className="divide-y divide-hairline">
-            {awaitingIC.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[14px] font-medium text-ink">
-                    {p.name}
-                  </p>
-                  <p className="text-[12px] text-ink-muted">
-                    {p.sponsor} · {fmtMillions(p.targetCommitment)} target
-                  </p>
-                </div>
-                <StatusPill
-                  tone={p.stage === "IC Review" ? "caution" : "info"}
-                  dot={false}
-                >
-                  {p.stage}
-                </StatusPill>
-              </li>
-            ))}
-          </ul>
-          <Link
-            href="/investments"
             className="mt-4 flex items-center gap-1 text-[12px] font-medium text-ink-muted transition-colors hover:text-brand"
           >
-            Open the pipeline <ArrowUpRight className="h-3.5 w-3.5" />
+            View governance calendar <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </Panel>
       </section>
 
       <p className="mt-10 border-t border-hairline pt-5 text-[11px] leading-relaxed text-ink-muted">
-        All values, returns, and review flags shown are illustrative mock data for
-        demonstration only. Lodestone Family Advisors does not provide automated
-        investment recommendations. Nothing here is investment advice; every item
-        requires advisor and Investment Committee review before any action.
+        Values reflect the most recent statements and manager marks available and may
+        lag current market values. Lodestone Family Advisors does not provide
+        automated investment recommendations. Nothing here is investment advice;
+        every item requires advisor and Investment Committee review before any action.
       </p>
     </div>
   );

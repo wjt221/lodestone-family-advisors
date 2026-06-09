@@ -23,7 +23,7 @@ const serif = Fraunces({
 export const metadata: Metadata = {
   title: "Lodestone Family Advisors — Investment OS",
   description:
-    "Advisor-led investment strategy, governance, and portfolio oversight for the Atwater Family Office.",
+    "Advisor-led investment strategy, governance, and portfolio oversight portal.",
 };
 
 export default function RootLayout({

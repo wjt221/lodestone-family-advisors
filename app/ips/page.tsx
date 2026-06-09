@@ -4,8 +4,32 @@ import { Panel } from "@/components/panel";
 import { StatusPill } from "@/components/status-pill";
 import { cn } from "@/lib/utils";
 import { IPS, POLICY_RANGES, LIQUIDITY_RESERVE_POLICY } from "@/lib/mock-data";
+import { isDemoMode } from "@/lib/data/session";
+import { getActiveClient } from "@/lib/data/clients";
+import { EmptyState } from "@/components/empty-state";
 
-export default function IpsPage() {
+export default async function IpsPage() {
+  // The IPS document model is not yet populated for live clients; never show
+  // the demo draft in secure mode.
+  if (!isDemoMode()) {
+    const client = await getActiveClient();
+    return (
+      <div>
+        <PageHeader
+          eyebrow="Investment Policy Statement"
+          title="Investment policy"
+          lede="The governing framework for how the family's capital is managed, reviewed, and decided."
+          status={{ label: "In Preparation", tone: "info" }}
+          client={{ name: client.name, asOf: client.asOf }}
+        />
+        <EmptyState
+          title="Your Investment Policy Statement is being prepared"
+          description="Lodestone is drafting the policy document — objectives, allocation ranges, liquidity policy, and decision rights. It will appear here for family review before adoption."
+        />
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
