@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Info, Lock } from "lucide-react";
+import { Info, Lock, KeyRound } from "lucide-react";
 import { Panel } from "@/components/panel";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/client";
@@ -115,10 +115,18 @@ function LoginForm() {
                 {loading ? "Signing in…" : "Sign in"}
               </button>
             </form>
-            <p className="mt-5 border-t border-hairline pt-4 text-[11px] leading-relaxed text-ink-muted">
-              Access is restricted to authorized family members and advisors. All
-              activity is subject to review.
-            </p>
+            <div className="mt-5 flex items-center justify-between border-t border-hairline pt-4">
+              <p className="text-[11px] leading-relaxed text-ink-muted">
+                Access is restricted to authorized members and advisors.
+              </p>
+              <Link
+                href="/auth/forgot-password"
+                className="inline-flex shrink-0 items-center gap-1 text-[12px] text-ink-muted transition-colors hover:text-brand"
+              >
+                <KeyRound className="h-3 w-3" />
+                Forgot password?
+              </Link>
+            </div>
           </Panel>
         ) : (
           <Panel className="p-7">
