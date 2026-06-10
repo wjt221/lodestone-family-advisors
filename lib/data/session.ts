@@ -6,6 +6,7 @@ import "server-only";
 // without auth. In secure mode they reflect the real Supabase session and the
 // client the user is permitted to access (enforced by RLS).
 
+import { cookies } from "next/headers";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/lib/supabase/types";
@@ -47,7 +48,7 @@ export async function getSessionContext(): Promise<SessionContext> {
   const profile = profileRes.data as { role: UserRole; email: string | null } | null;
 
   const role = (profile?.role ?? "client") as UserRole;
-  const clientId = await resolveClientId(supabase);
+  const clientId = await resolveClientId(supabase, role);
 
   return {
     configured: true,
@@ -59,13 +60,29 @@ export async function getSessionContext(): Promise<SessionContext> {
 }
 
 /**
- * Resolves the active client id for the user. RLS guarantees these queries only
- * return rows the user may access, so the first match is a safe default for this
- * single-client demo. A multi-client UI would let the user choose.
+ * Resolves the active client id for the user.
+ * For advisors/admins: respects a cookie-based override so they can toggle
+ * between family offices. For clients: always uses their assigned client.
  */
 async function resolveClientId(
   supabase: Awaited<ReturnType<typeof createClient>>,
+  role: UserRole,
 ): Promise<string | null> {
+  // Advisors and admins may have an explicit client selection stored in a cookie.
+  if (role === "advisor" || role === "admin") {
+    const cookieStore = await cookies();
+    const selected = cookieStore.get("lfa_active_client")?.value;
+    if (selected) {
+      // RLS enforces the user can actually access this client.
+      const { data } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("id", selected)
+        .maybeSingle();
+      if ((data as { id: string } | null)?.id) return (data as { id: string }).id;
+    }
+  }
+
   const membershipRes = await supabase
     .from("client_users")
     .select("client_id")
@@ -82,7 +99,7 @@ async function resolveClientId(
   const assignment = assignmentRes.data as { client_id: string } | null;
   if (assignment?.client_id) return assignment.client_id;
 
-  // Admins (or any user able to read a client row) fall back to the first client.
+  // Admins fall back to the first accessible client.
   const clientRes = await supabase
     .from("clients")
     .select("id")

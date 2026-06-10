@@ -72,6 +72,30 @@ export async function getActiveClient(): Promise<ClientSummary> {
   };
 }
 
+/** All clients visible to the current user (advisor/admin only; RLS enforces scope). */
+export async function getAllAccessibleClients(): Promise<ClientSummary[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const ctx = await getSessionContext();
+  if (ctx.role !== "advisor" && ctx.role !== "admin") return [];
+
+  const supabase = await createServerSupabase();
+  const res = await supabase
+    .from("clients")
+    .select("id, name, short_name, relationship_since, reporting_currency, as_of")
+    .order("name");
+  const rows = (res.data ?? []) as ClientRow[];
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    shortName: r.short_name ?? r.name,
+    relationshipSince: r.relationship_since ?? "",
+    reportingCurrency: r.reporting_currency,
+    asOf: r.as_of ?? "",
+  }));
+}
+
 export async function getEntities(): Promise<EntitySummary[]> {
   if (!isSupabaseConfigured()) {
     return MOCK_ENTITIES.map((e) => ({ ...e }));

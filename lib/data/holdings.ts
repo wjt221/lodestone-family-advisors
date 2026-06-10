@@ -46,6 +46,8 @@ export interface HoldingView {
   /** 'Internal' | 'External' oversight per the schedule. */
   oversight: string;
   note: string;
+  /** IRR stored directly on the holding row by the seeding process (decimal, e.g. 0.124). */
+  storedIrr: number | null;
 }
 
 function parseOwners(value: unknown): { name: string; pct: number }[] {
@@ -120,6 +122,7 @@ function mockDetailed(): HoldingView[] {
     owners: [{ name: entityName.get(h.entity) ?? "Family", pct: 100 }],
     oversight: "External",
     note: h.note ?? "",
+    storedIrr: null,
   }));
 }
 
@@ -139,7 +142,7 @@ export async function getHoldingsDetailed(): Promise<HoldingView[]> {
   const res = await supabase
     .from("holdings")
     .select(
-      "id, name, asset_class, market, liquidity, value, allocation_pct, manager, vintage, commitment, unfunded, contributions, distributions, account, structure, strategy, status, owners, oversight, note, entities ( name )",
+      "id, name, asset_class, market, liquidity, value, allocation_pct, manager, vintage, commitment, unfunded, contributions, distributions, irr, account, structure, strategy, status, owners, oversight, note, entities ( name )",
     )
     .eq("client_id", ctx.clientId)
     .order("value", { ascending: false });
@@ -167,6 +170,9 @@ export async function getHoldingsDetailed(): Promise<HoldingView[]> {
     owners: parseOwners(r.owners),
     oversight: r.oversight ?? "",
     note: r.note ?? "",
+    storedIrr: (r as unknown as { irr?: number | null }).irr != null
+      ? Number((r as unknown as { irr: number }).irr)
+      : null,
   }));
 }
 

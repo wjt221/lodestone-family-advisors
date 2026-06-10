@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Check, Minus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section";
@@ -10,7 +11,7 @@ import {
   type PipelineStage,
 } from "@/lib/mock-data";
 import { fmtMillions } from "@/lib/calculations";
-import { isDemoMode } from "@/lib/data/session";
+import { getSessionContext, isDemoMode } from "@/lib/data/session";
 import { getActiveClient } from "@/lib/data/clients";
 import { EmptyState } from "@/components/empty-state";
 
@@ -116,6 +117,10 @@ function PipelineCard({ p }: { p: PipelineItem }) {
 }
 
 export default async function InvestmentsPage() {
+  // Pipeline is internal-only — redirect family members to dashboard.
+  const ctx = await getSessionContext();
+  if (ctx.configured && ctx.role === "client") redirect("/dashboard");
+
   // The IC pipeline is not yet populated for live clients; never show demo deals.
   if (!isDemoMode()) {
     const client = await getActiveClient();
