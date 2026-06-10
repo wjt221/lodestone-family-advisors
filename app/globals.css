@@ -118,14 +118,14 @@
 
   --radius: 0.5rem;
 
-  /* Sidebar — deep ink navy */
-  --sidebar: oklch(0.21 0.018 260);
+  /* Sidebar — Lodestone navy, matched to logo background #031d48 */
+  --sidebar: #031d48;
   --sidebar-foreground: oklch(0.88 0.006 90);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.27 0.018 260);
+  --sidebar-accent: #0c2d5c;
   --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.3 0.015 260);
+  --sidebar-border: #1a3e6e;
   --sidebar-ring: var(--brand);
 }
 

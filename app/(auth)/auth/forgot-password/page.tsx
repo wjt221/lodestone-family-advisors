@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Mail } from "lucide-react";
 import { Panel } from "@/components/panel";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -20,8 +21,11 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       const supabase = createClient();
+      const base =
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        (typeof window !== "undefined" ? window.location.origin : "");
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+        redirectTo: `${base}/auth/update-password`,
       });
       if (error) {
         setError(error.message);
@@ -38,16 +42,15 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <span className="font-serif text-[22px] font-medium tracking-tight text-ink">
-              Lodestone
-            </span>
-            <span className="h-4 w-px bg-hairline" />
-            <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-brand">
-              Family Advisors
-            </span>
-          </div>
+        <div className="mb-8 flex flex-col items-center">
+          <Image
+            src="/logo-dark.png"
+            alt="Lodestone Family Advisors"
+            width={200}
+            height={90}
+            className="w-44"
+            priority
+          />
           <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             Investment OS
           </p>

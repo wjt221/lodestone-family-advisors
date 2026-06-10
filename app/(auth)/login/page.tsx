@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Info, Lock, KeyRound } from "lucide-react";
 import { Panel } from "@/components/panel";
@@ -50,16 +51,15 @@ function LoginForm() {
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <span className="font-serif text-[22px] font-medium tracking-tight text-ink">
-              Lodestone
-            </span>
-            <span className="h-4 w-px bg-hairline" />
-            <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-brand">
-              Family Advisors
-            </span>
-          </div>
+        <div className="mb-8 flex flex-col items-center">
+          <Image
+            src="/logo-dark.png"
+            alt="Lodestone Family Advisors"
+            width={200}
+            height={90}
+            className="w-44"
+            priority
+          />
           <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             Investment OS
           </p>

@@ -522,6 +522,57 @@ export type Database = {
           },
         ]
       }
+      cash_flows: {
+        Row: {
+          id: string
+          client_id: string
+          holding_id: string
+          flow_date: string
+          amount: number
+          label: string
+          notes: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          client_id: string
+          holding_id: string
+          flow_date: string
+          amount: number
+          label: string
+          notes?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          client_id?: string
+          holding_id?: string
+          flow_date?: string
+          amount?: number
+          label?: string
+          notes?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_flows_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_flows_holding_id_fkey"
+            columns: ["holding_id"]
+            isOneToOne: false
+            referencedRelation: "holdings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       holdings: {
         Row: {
           account: string | null
