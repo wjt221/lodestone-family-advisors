@@ -8,7 +8,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { getSessionContext } from "./session";
 import type { ClientRow, EntityRow } from "@/lib/supabase/types";
-import { CLIENT as MOCK_CLIENT, ENTITIES as MOCK_ENTITIES } from "@/lib/mock-data";
+import { CLIENT as MOCK_CLIENT, DIEZ_CLIENT, ENTITIES as MOCK_ENTITIES } from "@/lib/mock-data";
 
 export interface ClientSummary {
   id: string;
@@ -36,6 +36,17 @@ const MOCK_CLIENT_SUMMARY: ClientSummary = {
   asOf: MOCK_CLIENT.asOf,
 };
 
+const DIEZ_CLIENT_SUMMARY: ClientSummary = {
+  id: DIEZ_CLIENT.id,
+  name: DIEZ_CLIENT.name,
+  shortName: DIEZ_CLIENT.shortName,
+  relationshipSince: DIEZ_CLIENT.relationshipSince,
+  reportingCurrency: DIEZ_CLIENT.reportingCurrency,
+  asOf: DIEZ_CLIENT.asOf,
+};
+
+const ALL_MOCK_CLIENTS: ClientSummary[] = [MOCK_CLIENT_SUMMARY, DIEZ_CLIENT_SUMMARY];
+
 // Secure mode must NEVER surface demo data: when no client is resolvable we
 // return a neutral placeholder, not the mock client.
 const NO_CLIENT: ClientSummary = {
@@ -48,7 +59,10 @@ const NO_CLIENT: ClientSummary = {
 };
 
 export async function getActiveClient(): Promise<ClientSummary> {
-  if (!isSupabaseConfigured()) return MOCK_CLIENT_SUMMARY;
+  if (!isSupabaseConfigured()) {
+    const ctx = await getSessionContext();
+    return ALL_MOCK_CLIENTS.find((c) => c.id === ctx.clientId) ?? MOCK_CLIENT_SUMMARY;
+  }
 
   const ctx = await getSessionContext();
   if (!ctx.clientId) return NO_CLIENT;
@@ -70,6 +84,30 @@ export async function getActiveClient(): Promise<ClientSummary> {
     reportingCurrency: data.reporting_currency,
     asOf: data.as_of ?? "",
   };
+}
+
+/** All clients visible to the current user (advisor/admin only; RLS enforces scope). */
+export async function getAllAccessibleClients(): Promise<ClientSummary[]> {
+  if (!isSupabaseConfigured()) return ALL_MOCK_CLIENTS;
+
+  const ctx = await getSessionContext();
+  if (ctx.role !== "advisor" && ctx.role !== "admin") return [];
+
+  const supabase = await createServerSupabase();
+  const res = await supabase
+    .from("clients")
+    .select("id, name, short_name, relationship_since, reporting_currency, as_of")
+    .order("name");
+  const rows = (res.data ?? []) as ClientRow[];
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    shortName: r.short_name ?? r.name,
+    relationshipSince: r.relationship_since ?? "",
+    reportingCurrency: r.reporting_currency,
+    asOf: r.as_of ?? "",
+  }));
 }
 
 export async function getEntities(): Promise<EntitySummary[]> {

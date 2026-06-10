@@ -19,16 +19,20 @@ export interface SessionContext {
   clientId: string | null;
 }
 
-const DEMO_CONTEXT: SessionContext = {
-  configured: false,
-  userId: null,
-  email: "demo@lodestone.local",
-  role: "advisor",
-  clientId: null,
-};
+const DEMO_ADVISOR_ROLE: UserRole = "advisor";
 
 export async function getSessionContext(): Promise<SessionContext> {
-  if (!isSupabaseConfigured()) return DEMO_CONTEXT;
+  if (!isSupabaseConfigured()) {
+    const cookieStore = await cookies();
+    const selected = cookieStore.get("lfa_active_client")?.value ?? "mock-atwater";
+    return {
+      configured: false,
+      userId: null,
+      email: "demo@lodestone.local",
+      role: DEMO_ADVISOR_ROLE,
+      clientId: selected,
+    };
+  }
 
   const supabase = await createClient();
   const {

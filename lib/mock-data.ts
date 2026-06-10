@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// LFA Investment OS — Mock data for the Atwater Family Office
+// LFA Investment OS — Mock data (illustrative, demo only)
 //
 // All figures are ILLUSTRATIVE and for demonstration only. Nothing in this file
 // is investment advice. The application frames every analytical output as a
@@ -13,6 +13,19 @@ export const CLIENT = {
   advisorTitle: "Lead Advisor, Lodestone Family Advisors",
   relationshipSince: "2018",
   aum: 47_300_000,
+  asOf: "May 31, 2026",
+  reportingCurrency: "USD",
+};
+
+// Second demo family office — fictional, for multi-client switcher demo only
+export const DIEZ_CLIENT = {
+  id: "mock-diez",
+  name: "Diez Family Office",
+  shortName: "Diez",
+  advisor: "Sarah Chen, CFA",
+  advisorTitle: "Lead Advisor, Lodestone Family Advisors",
+  relationshipSince: "2021",
+  aum: 31_500_000,
   asOf: "May 31, 2026",
   reportingCurrency: "USD",
 };
