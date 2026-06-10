@@ -5,13 +5,40 @@ import { Stat } from "@/components/stat";
 import { StatusPill } from "@/components/status-pill";
 import { getHoldingsDetailed } from "@/lib/data/holdings";
 import { getActiveClient } from "@/lib/data/clients";
+import { getCashFlowsByHolding } from "@/lib/data/cash-flows";
 import { breakdownBy, totalValue, totalUnfundedOf } from "@/lib/portfolio-math";
 import { fmtMillions, fmtPct } from "@/lib/calculations";
+import { CashFlowModel, type CapitalAccountInput } from "./cash-flow-model";
 
 const LADDER_ORDER = ["Daily", "Quarterly", "Annual", "Multi-Year", "Illiquid"];
 
 export default async function LiquidityPage() {
-  const [holdings, client] = await Promise.all([getHoldingsDetailed(), getActiveClient()]);
+  const [holdings, client, cashFlowsByHolding] = await Promise.all([
+    getHoldingsDetailed(),
+    getActiveClient(),
+    getCashFlowsByHolding(),
+  ]);
+
+  // Per-capital-account inputs for the cash-flow availability model:
+  // liquid balance, unfunded commitments, and trailing-year income run-rate.
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  const cutoff = oneYearAgo.toISOString().slice(0, 10);
+
+  const accountMap = new Map<string, CapitalAccountInput>();
+  for (const h of holdings) {
+    const name = h.entityName || "Managed Accounts";
+    const acct = accountMap.get(name) ?? { name, liquid: 0, unfunded: 0, annualIncome: 0 };
+    if (h.liquidity === "Daily" || h.liquidity === "Quarterly") acct.liquid += h.value;
+    acct.unfunded += h.unfunded ?? 0;
+    const flows = cashFlowsByHolding.get(h.id) ?? [];
+    acct.annualIncome += flows
+      .filter((cf) => cf.amount > 0 && cf.date >= cutoff)
+      .reduce((s, cf) => s + cf.amount, 0);
+    accountMap.set(name, acct);
+  }
+  const capitalAccounts = [...accountMap.values()].sort((a, b) => b.liquid - a.liquid);
+  const startYear = new Date().getFullYear();
 
   const total = totalValue(holdings) || 1;
   const unfunded = totalUnfundedOf(holdings);
@@ -113,6 +140,16 @@ export default async function LiquidityPage() {
             ))}
           </ul>
         </Panel>
+      </section>
+
+      {/* Cash-flow availability model */}
+      <section className="mb-10">
+        <SectionHeading
+          eyebrow="Cash-flow modeling"
+          title="Cash flow availability by capital account"
+          description="A five-year view of available cash for the family and each capital account — expected distributions and investment income in, committed capital calls and family draws out. Adjust the assumptions to test scenarios."
+        />
+        <CashFlowModel accounts={capitalAccounts} startYear={startYear} />
       </section>
 
       {/* Unfunded by entity */}

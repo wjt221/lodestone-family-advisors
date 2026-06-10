@@ -8,7 +8,7 @@ import {
   Menu,
   X,
   LayoutDashboard,
-  Compass,
+  Wallet,
   FileText,
   Scale,
   ShieldAlert,
@@ -33,12 +33,14 @@ import type { UserRole } from "@/lib/supabase/types";
 const NAV_GROUPS = [
   {
     title: "Overview",
-    items: [{ label: "Command Center", href: "/dashboard", icon: LayoutDashboard }],
+    items: [
+      { label: "Command Center", href: "/dashboard", icon: LayoutDashboard },
+      { label: "Net Worth", href: "/net-worth", icon: Wallet },
+    ],
   },
   {
     title: "Strategy & Policy",
     items: [
-      { label: "Strategy", href: "/strategy", icon: Compass },
       { label: "Policy Statement", href: "/ips", icon: FileText },
       { label: "Allocation", href: "/allocation", icon: Scale },
       { label: "Risk Register", href: "/risk", icon: ShieldAlert },

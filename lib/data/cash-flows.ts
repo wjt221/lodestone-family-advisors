@@ -60,6 +60,39 @@ export async function getCashFlowsByHolding(): Promise<Map<string, CashFlowView[
   return map;
 }
 
+export interface YearlyFlowSummary {
+  year: number;
+  contributions: number; // capital deployed during the year (positive figure)
+  distributions: number; // cash received during the year
+  net: number; // distributions − contributions
+}
+
+/** Cash flows aggregated by calendar year for the active client. */
+export async function getYearlyFlows(): Promise<YearlyFlowSummary[]> {
+  const byHolding = await getCashFlowsByHolding();
+  const byYear = new Map<number, { contributions: number; distributions: number }>();
+
+  for (const flows of byHolding.values()) {
+    for (const cf of flows) {
+      const year = Number(cf.date.slice(0, 4));
+      if (!Number.isFinite(year)) continue;
+      const agg = byYear.get(year) ?? { contributions: 0, distributions: 0 };
+      if (cf.amount < 0) agg.contributions += Math.abs(cf.amount);
+      else agg.distributions += cf.amount;
+      byYear.set(year, agg);
+    }
+  }
+
+  return [...byYear.entries()]
+    .map(([year, agg]) => ({
+      year,
+      contributions: agg.contributions,
+      distributions: agg.distributions,
+      net: agg.distributions - agg.contributions,
+    }))
+    .sort((a, b) => a.year - b.year);
+}
+
 /** Add a single cash-flow event. Secure mode only. */
 export async function addCashFlow(input: NewCashFlow): Promise<void> {
   if (!isSupabaseConfigured()) throw new Error("Cash-flow writes require secure mode.");
