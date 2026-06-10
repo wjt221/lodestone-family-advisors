@@ -68,23 +68,31 @@ const BLANK_CF = { date: "", amount: "", label: "Capital call", notes: "" };
 function computeMetrics(
   cashFlows: CashFlowView[],
   currentValue: number,
+  storedContributions?: number | null,
+  storedDistributions?: number | null,
 ): HoldingMetrics {
   const today = new Date();
   const sorted = [...cashFlows].sort((a, b) => a.date.localeCompare(b.date));
 
-  const totalInvested = sorted
+  const cfInvested = sorted
     .filter((cf) => cf.amount < 0)
     .reduce((s, cf) => s + Math.abs(cf.amount), 0);
-  const totalDistributions = sorted
+  const cfDistributions = sorted
     .filter((cf) => cf.amount > 0)
     .reduce((s, cf) => s + cf.amount, 0);
+
+  // When no cash flows exist, fall back to the stored contributions/distributions
+  // columns on the holding row so MOIC can still be displayed.
+  const hasCashFlows = sorted.length > 0;
+  const totalInvested = hasCashFlows ? cfInvested : (storedContributions ?? 0);
+  const totalDistributions = hasCashFlows ? cfDistributions : (storedDistributions ?? 0);
 
   const xirrFlows = [
     ...sorted.map((cf) => ({ date: new Date(cf.date), amount: cf.amount })),
     { date: today, amount: currentValue },
   ];
 
-  const irrVal = xirr(xirrFlows);
+  const irrVal = hasCashFlows ? xirr(xirrFlows) : null;
   const moicVal = moic(totalInvested, currentValue, totalDistributions);
 
   return { irr: irrVal, moic: moicVal, totalInvested, totalDistributions };
@@ -452,7 +460,7 @@ export function HoldingsTable({
     const map = new Map<string, HoldingMetrics>();
     for (const h of rows) {
       const flows = cashFlows[h.id] ?? [];
-      map.set(h.id, computeMetrics(flows, h.value));
+      map.set(h.id, computeMetrics(flows, h.value, h.contributions, h.distributions));
     }
     return map;
   }, [rows, cashFlows]);

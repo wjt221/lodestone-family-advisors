@@ -11,7 +11,6 @@ import {
   ShieldAlert,
   Briefcase,
   Layers,
-  Search,
   Droplets,
   TrendingUp,
   Users,
@@ -59,7 +58,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Performance", href: "/performance", icon: TrendingUp },
       { label: "Liquidity", href: "/liquidity", icon: Droplets },
       { label: "Pipeline", href: "/investments", icon: Layers },
-      { label: "Diligence", href: "/diligence", icon: Search },
     ],
   },
   {
