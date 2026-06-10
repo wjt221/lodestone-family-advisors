@@ -20,8 +20,11 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       const supabase = createClient();
+      const base =
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        (typeof window !== "undefined" ? window.location.origin : "");
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+        redirectTo: `${base}/auth/update-password`,
       });
       if (error) {
         setError(error.message);
