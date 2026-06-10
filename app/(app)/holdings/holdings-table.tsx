@@ -68,23 +68,32 @@ const BLANK_CF = { date: "", amount: "", label: "Capital call", notes: "" };
 function computeMetrics(
   cashFlows: CashFlowView[],
   currentValue: number,
+  storedContributions?: number | null,
+  storedDistributions?: number | null,
+  storedIrr?: number | null,
 ): HoldingMetrics {
   const today = new Date();
   const sorted = [...cashFlows].sort((a, b) => a.date.localeCompare(b.date));
 
-  const totalInvested = sorted
+  const cfInvested = sorted
     .filter((cf) => cf.amount < 0)
     .reduce((s, cf) => s + Math.abs(cf.amount), 0);
-  const totalDistributions = sorted
+  const cfDistributions = sorted
     .filter((cf) => cf.amount > 0)
     .reduce((s, cf) => s + cf.amount, 0);
+
+  // Fall back to stored columns when no dated cash flows are available.
+  const hasCashFlows = sorted.length > 0;
+  const totalInvested = hasCashFlows ? cfInvested : (storedContributions ?? 0);
+  const totalDistributions = hasCashFlows ? cfDistributions : (storedDistributions ?? 0);
 
   const xirrFlows = [
     ...sorted.map((cf) => ({ date: new Date(cf.date), amount: cf.amount })),
     { date: today, amount: currentValue },
   ];
 
-  const irrVal = xirr(xirrFlows);
+  // Prefer computed XIRR from dated flows; fall back to the stored irr column.
+  const irrVal = hasCashFlows ? xirr(xirrFlows) : (storedIrr ?? null);
   const moicVal = moic(totalInvested, currentValue, totalDistributions);
 
   return { irr: irrVal, moic: moicVal, totalInvested, totalDistributions };
@@ -206,6 +215,7 @@ function AddHoldingModal({ onAdd, onClose }: {
       strategy: "", status: "Open",
       owners: [{ name: form.entityName, pct: 100 }],
       oversight: "External", note: form.note.trim(),
+      storedIrr: null,
     });
   };
 
@@ -452,7 +462,7 @@ export function HoldingsTable({
     const map = new Map<string, HoldingMetrics>();
     for (const h of rows) {
       const flows = cashFlows[h.id] ?? [];
-      map.set(h.id, computeMetrics(flows, h.value));
+      map.set(h.id, computeMetrics(flows, h.value, h.contributions, h.distributions, h.storedIrr));
     }
     return map;
   }, [rows, cashFlows]);

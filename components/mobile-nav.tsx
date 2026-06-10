@@ -8,14 +8,12 @@ import {
   Menu,
   X,
   LayoutDashboard,
-  Compass,
   FileText,
   Scale,
   ShieldAlert,
   Briefcase,
   TableProperties,
   Layers,
-  Search,
   Droplets,
   TrendingUp,
   Users,
@@ -27,16 +25,18 @@ import {
 import { cn } from "@/lib/utils";
 import { CLIENT } from "@/lib/mock-data";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { ClientSwitcher } from "@/components/client-switcher";
+import type { ClientSummary } from "@/lib/data/clients";
+import type { UserRole } from "@/lib/supabase/types";
 
 const NAV_GROUPS = [
   {
     title: "Overview",
-    items: [{ label: "Command Center", href: "/dashboard", icon: LayoutDashboard }],
+    items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }],
   },
   {
     title: "Strategy & Policy",
     items: [
-      { label: "Strategy", href: "/strategy", icon: Compass },
       { label: "Policy Statement", href: "/ips", icon: FileText },
       { label: "Allocation", href: "/allocation", icon: Scale },
       { label: "Risk Register", href: "/risk", icon: ShieldAlert },
@@ -51,7 +51,6 @@ const NAV_GROUPS = [
       { label: "Performance", href: "/performance", icon: TrendingUp },
       { label: "Liquidity", href: "/liquidity", icon: Droplets },
       { label: "Pipeline", href: "/investments", icon: Layers },
-      { label: "Diligence", href: "/diligence", icon: Search },
     ],
   },
   {
@@ -68,12 +67,27 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function MobileNav() {
+interface MobileNavProps {
+  role?: UserRole;
+  clients?: ClientSummary[];
+  activeClientId?: string | null;
+}
+
+export function MobileNav({ role = "client", clients = [], activeClientId = null }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const isStaff = role === "advisor" || role === "admin";
+
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => {
+      if (item.href === "/investments") return isStaff;
+      return true;
+    }),
+  })).filter((g) => g.items.length > 0);
 
   const currentLabel =
-    NAV_GROUPS.flatMap((g) => g.items).find((i) => isActive(pathname, i.href))
+    visibleGroups.flatMap((g) => g.items).find((i) => isActive(pathname, i.href))
       ?.label ?? "Lodestone";
 
   return (
@@ -124,14 +138,11 @@ export function MobileNav() {
             <Image
               src="/logo-white.png"
               alt="Lodestone Family Advisors"
-              width={160}
-              height={72}
-              className="w-36"
+              width={200}
+              height={90}
+              className="w-44"
               priority
             />
-            <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/40">
-              Investment OS
-            </p>
           </Link>
           <button
             type="button"
@@ -142,11 +153,17 @@ export function MobileNav() {
           </button>
         </div>
 
+        {isStaff && clients.length >= 2 && (
+          <div className="pb-2 pt-3">
+            <ClientSwitcher clients={clients} activeClientId={activeClientId} />
+          </div>
+        )}
+
         <div className="mx-6 h-px bg-sidebar-border" />
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-5">
-          {NAV_GROUPS.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.title} className="mb-6">
               <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/35">
                 {group.title}

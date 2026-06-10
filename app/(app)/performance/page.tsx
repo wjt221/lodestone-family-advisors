@@ -6,6 +6,7 @@ import { StatusPill } from "@/components/status-pill";
 import { getPerformance, type PerformanceView } from "@/lib/data/performance";
 import { getActiveClient } from "@/lib/data/clients";
 import { getHoldingsDetailed } from "@/lib/data/holdings";
+import { getYearlyFlows } from "@/lib/data/cash-flows";
 import { fmtMillions } from "@/lib/calculations";
 
 const pct = (v: number | null, digits = 1) =>
@@ -64,10 +65,11 @@ function ReturnsTable({
 }
 
 export default async function PerformancePage() {
-  const [performance, client, holdings] = await Promise.all([
+  const [performance, client, holdings, yearlyFlows] = await Promise.all([
     getPerformance(),
     getActiveClient(),
     getHoldingsDetailed(),
+    getYearlyFlows(),
   ]);
 
   // Lodestone-sourced deals are identified by manager on the schedule.
@@ -77,6 +79,7 @@ export default async function PerformancePage() {
   const assetClasses = byScope("asset_class");
   const internal = byScope("internal_asset_class");
   const entities = byScope("entity");
+  const years = byScope("year").sort((a, b) => a.label.localeCompare(b.label));
   const total = byScope("total")[0] ?? null;
   const other = byScope("other");
   const business = other.find((o) => /business/i.test(o.label)) ?? null;
@@ -181,6 +184,67 @@ export default async function PerformancePage() {
           </table>
         </Panel>
       </section>
+
+      {/* Performance by year */}
+      {(years.length > 0 || yearlyFlows.length > 0) && (
+        <section className="mb-10">
+          <SectionHeading
+            eyebrow="By year"
+            title="Performance by year"
+            description="Annual results and capital activity. Returns by year are shown where available; capital activity is aggregated from the dated cash-flow ledger."
+          />
+
+          {years.length > 0 && (
+            <div className="mb-5">
+              <ReturnsTable rows={years} benchmarkLabel="Benchmark" />
+            </div>
+          )}
+
+          {yearlyFlows.length > 0 && (
+            <Panel inset className="overflow-x-auto">
+              <table className="w-full min-w-[680px] text-[13px]">
+                <thead>
+                  <tr className="border-b border-hairline">
+                    {["Year", "Capital deployed", "Distributions received", "Net flow", "Cumulative net"].map((h, i) => (
+                      <th
+                        key={h}
+                        className={`px-5 py-3 font-medium text-ink-muted ${i >= 1 ? "text-right" : "text-left"}`}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline">
+                  {(() => {
+                    let cumulative = 0;
+                    return yearlyFlows.map((y) => {
+                      cumulative += y.net;
+                      return (
+                        <tr key={y.year} className="transition-colors hover:bg-secondary/40">
+                          <td className="px-5 py-3.5 font-medium text-ink">{y.year}</td>
+                          <td className="tnum px-5 py-3.5 text-right text-ink-muted">
+                            {y.contributions > 0 ? `(${fmtMillions(y.contributions, 2)})` : "—"}
+                          </td>
+                          <td className="tnum px-5 py-3.5 text-right text-ink">
+                            {y.distributions > 0 ? fmtMillions(y.distributions, 2) : "—"}
+                          </td>
+                          <td className={`tnum px-5 py-3.5 text-right font-medium ${y.net >= 0 ? "text-positive" : "text-ink"}`}>
+                            {y.net >= 0 ? fmtMillions(y.net, 2) : `(${fmtMillions(Math.abs(y.net), 2)})`}
+                          </td>
+                          <td className={`tnum px-5 py-3.5 text-right ${cumulative >= 0 ? "text-positive" : "text-ink-muted"}`}>
+                            {cumulative >= 0 ? fmtMillions(cumulative, 2) : `(${fmtMillions(Math.abs(cumulative), 2)})`}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </Panel>
+          )}
+        </section>
+      )}
 
       {/* Lodestone-sourced investments */}
       {lodestoneDeals.length > 0 && (
