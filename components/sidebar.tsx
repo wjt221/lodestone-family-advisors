@@ -82,19 +82,16 @@ export function Sidebar() {
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
       {/* Logo */}
-      <div className="px-6 pb-4 pt-5">
+      <div className="px-5 pb-4 pt-6">
         <Link href="/dashboard" className="block">
           <Image
             src="/logo-white.png"
             alt="Lodestone Family Advisors"
-            width={160}
-            height={72}
-            className="w-36"
+            width={200}
+            height={90}
+            className="w-48"
             priority
           />
-          <p className="mt-1.5 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/40">
-            Investment OS
-          </p>
         </Link>
       </div>
 

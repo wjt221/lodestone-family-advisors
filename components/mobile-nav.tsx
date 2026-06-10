@@ -124,14 +124,11 @@ export function MobileNav() {
             <Image
               src="/logo-white.png"
               alt="Lodestone Family Advisors"
-              width={160}
-              height={72}
-              className="w-36"
+              width={200}
+              height={90}
+              className="w-44"
               priority
             />
-            <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/40">
-              Investment OS
-            </p>
           </Link>
           <button
             type="button"
