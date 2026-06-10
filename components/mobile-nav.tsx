@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Menu,
@@ -79,14 +80,15 @@ export function MobileNav() {
     <>
       {/* Top bar */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-hairline bg-sidebar px-4 md:hidden">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="font-serif text-[17px] font-medium tracking-tight text-white">
-            Lodestone
-          </span>
-          <span className="h-3.5 w-px bg-sidebar-border" />
-          <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-brand">
-            FA
-          </span>
+        <Link href="/dashboard">
+          <Image
+            src="/logo-white.png"
+            alt="Lodestone Family Advisors"
+            width={120}
+            height={54}
+            className="w-24"
+            priority
+          />
         </Link>
         <span className="flex-1 px-3 text-center text-[13px] font-medium text-white/70 truncate">
           {currentLabel}
@@ -119,16 +121,15 @@ export function MobileNav() {
         {/* Drawer header */}
         <div className="flex items-center justify-between px-6 pb-5 pt-6">
           <Link href="/dashboard" onClick={() => setOpen(false)}>
-            <div className="flex items-center gap-2">
-              <span className="font-serif text-lg font-medium tracking-tight text-white">
-                Lodestone
-              </span>
-              <span className="h-4 w-px bg-sidebar-border" />
-              <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-brand">
-                Family Advisors
-              </span>
-            </div>
-            <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-sidebar-foreground/45">
+            <Image
+              src="/logo-white.png"
+              alt="Lodestone Family Advisors"
+              width={160}
+              height={72}
+              className="w-36"
+              priority
+            />
+            <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/40">
               Investment OS
             </p>
           </Link>

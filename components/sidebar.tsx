@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -80,19 +81,18 @@ export function Sidebar() {
 
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
-      {/* Wordmark */}
-      <div className="px-6 pb-5 pt-6">
+      {/* Logo */}
+      <div className="px-6 pb-4 pt-5">
         <Link href="/dashboard" className="block">
-          <div className="flex items-center gap-2">
-            <span className="font-serif text-lg font-medium tracking-tight text-white">
-              Lodestone
-            </span>
-            <span className="h-4 w-px bg-sidebar-border" />
-            <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-brand">
-              Family Advisors
-            </span>
-          </div>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-sidebar-foreground/45">
+          <Image
+            src="/logo-white.png"
+            alt="Lodestone Family Advisors"
+            width={160}
+            height={72}
+            className="w-36"
+            priority
+          />
+          <p className="mt-1.5 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/40">
             Investment OS
           </p>
         </Link>
