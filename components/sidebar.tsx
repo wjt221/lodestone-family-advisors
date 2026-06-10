@@ -5,7 +5,6 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Wallet,
   FileText,
   Scale,
   ShieldAlert,
@@ -41,10 +40,7 @@ interface NavGroup {
 const NAV_GROUPS: NavGroup[] = [
   {
     title: "Overview",
-    items: [
-      { label: "Command Center", href: "/dashboard", icon: LayoutDashboard },
-      { label: "Net Worth", href: "/net-worth", icon: Wallet },
-    ],
+    items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }],
   },
   {
     title: "Strategy & Policy",

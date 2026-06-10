@@ -49,6 +49,16 @@ export default async function DashboardPage() {
       ? totalPerf.returnNet - totalPerf.expectedReturn
       : null;
 
+  // Net worth = investment portfolio + business ownership held outside it.
+  const businessOutside =
+    performance.find((p) => p.scope === "other" && /business/i.test(p.label))?.amount ?? 0;
+  const netWorth = total + businessOutside;
+
+  const byEntity = breakdownBy(holdings, (h) => h.entityName || "Managed Accounts");
+  const businessHoldings = holdings
+    .filter((h) => /operating|business/i.test(h.structure) || /operating business|construction/i.test(h.strategy))
+    .sort((a, b) => b.value - a.value);
+
   const cashValue = holdings
     .filter((h) => /cash/i.test(h.assetClass) || h.liquidity === "Daily")
     .reduce((s, h) => s + h.value, 0);
@@ -65,20 +75,26 @@ export default async function DashboardPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Command Center"
+        eyebrow="Dashboard"
         title="What needs attention this quarter"
-        lede={`A working view of ${client.name} — exposure, liquidity, risk, and the decisions in front of the family. Every figure is prepared for advisor review.`}
+        lede={`A working view of ${client.name} — net worth, exposure, liquidity, risk, and the decisions in front of the family. Every figure is prepared for advisor review.`}
         status={{ label: "Advisor Review Required", tone: "critical" }}
         client={{ name: client.name, asOf: client.asOf }}
       />
 
-      {/* ── Portfolio at a glance ─────────────────────────────────────────── */}
+      {/* ── Net worth at a glance ─────────────────────────────────────────── */}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Panel className="p-5">
           <Stat
-            label="Total investments"
-            value={fmtMillions(total)}
-            sub={entities.length ? `Across ${entities.length} entities` : `${holdings.length} positions`}
+            label="Total net worth"
+            value={fmtMillions(netWorth)}
+            sub={
+              businessOutside > 0
+                ? `${fmtMillions(total)} investments · ${fmtMillions(businessOutside)} business`
+                : entities.length
+                  ? `Across ${entities.length} entities`
+                  : `${holdings.length} positions`
+            }
           />
         </Panel>
         <Panel className="p-5">
@@ -194,6 +210,70 @@ export default async function DashboardPage() {
           </Link>
         </Panel>
       </div>
+
+      {/* ── Family balance sheet ──────────────────────────────────────────── */}
+      <section className="mb-10">
+        <SectionHeading
+          eyebrow="Net worth"
+          title="The family balance sheet"
+          description="Where the wealth is held — by capital account, plus directly held business interests."
+        />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Panel>
+            <PanelHeader title="By capital account" />
+            <ul className="space-y-2">
+              {byEntity.map((row) => (
+                <li key={row.label} className="flex items-center justify-between gap-3 text-[13px]">
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: row.color }} />
+                    <span className="truncate text-ink">{row.label}</span>
+                    <span className="shrink-0 text-[11.5px] text-ink-muted">{row.count}</span>
+                  </span>
+                  <span className="tnum flex shrink-0 items-baseline gap-2">
+                    <span className="font-medium text-ink">{fmtMillions(row.value, 2)}</span>
+                    <span className="text-ink-muted">{fmtPct(row.pct, 1)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center justify-between border-t border-hairline pt-3 text-[13px]">
+              <span className="font-medium text-ink">Total investments</span>
+              <span className="tnum font-semibold text-ink">{fmtMillions(total, 2)}</span>
+            </div>
+          </Panel>
+
+          <Panel>
+            <PanelHeader title="Business interests" />
+            {businessHoldings.length > 0 ? (
+              <ul className="space-y-3">
+                {businessHoldings.slice(0, 5).map((h) => (
+                  <li key={h.id} className="flex items-start justify-between gap-3 text-[13px]">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-ink">{h.name}</p>
+                      <p className="truncate text-[11.5px] text-ink-muted">
+                        {h.owners.length > 0
+                          ? h.owners.map((o) => `${o.name} ${o.pct}%`).join(" · ")
+                          : h.entityName || h.strategy}
+                      </p>
+                    </div>
+                    <span className="tnum shrink-0 font-medium text-ink">{fmtMillions(h.value, 2)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[13px] leading-relaxed text-ink-muted">
+                No directly held operating businesses on the schedule.
+              </p>
+            )}
+            {businessOutside > 0 && (
+              <div className="mt-3 flex items-center justify-between border-t border-hairline pt-3 text-[13px]">
+                <span className="text-ink-muted">Held outside the portfolio</span>
+                <span className="tnum font-medium text-ink">{fmtMillions(businessOutside, 2)}</span>
+              </div>
+            )}
+          </Panel>
+        </div>
+      </section>
 
       {/* ── Position summary band ─────────────────────────────────────────── */}
       <section className="mb-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
