@@ -17,6 +17,7 @@ import {
   CalendarDays,
   FolderOpen,
   Settings,
+  TableProperties,
 } from "lucide-react";
 import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Portfolio",
     items: [
       { label: "Portfolio", href: "/portfolio", icon: Briefcase },
+      { label: "Holdings", href: "/holdings", icon: TableProperties },
       { label: "Owners & Entities", href: "/entities", icon: Users },
       { label: "Performance", href: "/performance", icon: TrendingUp },
       { label: "Liquidity", href: "/liquidity", icon: Droplets },
