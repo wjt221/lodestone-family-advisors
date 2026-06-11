@@ -417,7 +417,7 @@ function ColHeader({ label, sortKey, current, dir, onSort, right }: {
   const active = current === sortKey;
   const Icon = active ? (dir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;
   return (
-    <th className={cn("cursor-pointer select-none whitespace-nowrap px-2.5 py-3 text-[11.5px] font-semibold uppercase tracking-[0.08em] transition-colors", right ? "text-right" : "text-left", active ? "text-brand" : "text-ink-muted hover:text-ink")} onClick={() => onSort(sortKey)}>
+    <th className={cn("cursor-pointer select-none whitespace-nowrap px-2 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors", right ? "text-right" : "text-left", active ? "text-brand" : "text-ink-muted hover:text-ink")} onClick={() => onSort(sortKey)}>
       <span className="inline-flex items-center gap-1">
         {right && <Icon className="h-3 w-3 opacity-60" />}
         {label}
@@ -540,10 +540,10 @@ export function HoldingsTable({
 
       {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-hairline">
-        <table className="w-full min-w-[1000px] text-[13px]">
+        <table className="w-full min-w-[880px] text-[12px]">
           <thead>
             <tr className="border-b border-hairline bg-secondary/60">
-              <th className="w-8 px-2 py-3" />
+              <th className="w-6 px-1 py-3" />
               <ColHeader label="Holding"     sortKey="name"         current={sortKey} dir={sortDir} onSort={handleSort} />
               <ColHeader label="Asset class" sortKey="assetClass"   current={sortKey} dir={sortDir} onSort={handleSort} />
               <ColHeader label="Entity"      sortKey="entityName"   current={sortKey} dir={sortDir} onSort={handleSort} />
@@ -554,7 +554,7 @@ export function HoldingsTable({
               <ColHeader label="Value"       sortKey="value"        current={sortKey} dir={sortDir} onSort={handleSort} right />
               <ColHeader label="Weight"      sortKey="allocationPct" current={sortKey} dir={sortDir} onSort={handleSort} right />
               <ColHeader label="Unfunded"    sortKey="unfunded"     current={sortKey} dir={sortDir} onSort={handleSort} right />
-              <th className="w-10 px-3 py-3" />
+              <th className="w-8 px-2 py-3" />
             </tr>
           </thead>
           <tbody>
@@ -571,61 +571,54 @@ export function HoldingsTable({
                 <tr key={h.id}
                   className={cn("group border-b border-hairline transition-colors", isDeleting ? "bg-critical/5" : "hover:bg-secondary/40")}>
                   {/* Expand toggle */}
-                  <td className="px-2 py-3.5">
+                  <td className="px-1 py-3">
                     <button type="button" onClick={() => setExpandedRow(isExpanded ? null : h.id)}
                       className={cn("rounded p-1 transition-colors", isExpanded ? "text-brand" : "text-ink-muted/40 hover:text-brand")}>
-                      <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", isExpanded && "rotate-90")} />
+                      <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
                     </button>
                   </td>
                   {/* Name */}
-                  <td className="px-2.5 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: colorFor(h.assetClass) }} />
+                  <td className="px-2 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: colorFor(h.assetClass) }} />
                       <div className="min-w-0">
-                        <p className="max-w-[180px] truncate font-medium text-ink">{h.name}</p>
-                        <p className="max-w-[180px] truncate text-[11px] text-ink-muted/70">{h.manager || ""}{h.vintage ? ` · ${h.vintage}` : ""}</p>
+                        <p className="max-w-[160px] truncate font-medium text-ink">{h.name}</p>
+                        <p className="max-w-[160px] truncate text-[10.5px] text-ink-muted/70">{h.manager || ""}{h.vintage ? ` · ${h.vintage}` : ""}</p>
                       </div>
                     </div>
                   </td>
                   {/* Asset class */}
-                  <td className="px-2.5 py-3.5">
-                    <span className="inline-block max-w-[120px] truncate rounded-full px-2 py-0.5 text-[11.5px] font-medium"
+                  <td className="px-2 py-3">
+                    <span className="inline-block max-w-[110px] truncate rounded-full px-1.5 py-0.5 text-[11px] font-medium"
                       style={{ background: `${colorFor(h.assetClass)}18`, color: colorFor(h.assetClass) }}>
                       {h.assetClass}
                     </span>
                   </td>
-                  <td className="max-w-[110px] truncate px-2.5 py-3.5 text-ink-muted">{h.entityName || "Managed Accounts"}</td>
-                  <td className="px-2.5 py-3.5"><StatusPill tone={liquidityTone(h.liquidity)} dot={false}>{h.liquidity}</StatusPill></td>
-                  <td className="px-2.5 py-3.5 text-ink-muted">{h.vintage || "—"}</td>
+                  <td className="max-w-[100px] truncate px-2 py-3 text-ink-muted">{h.entityName || "Managed Accounts"}</td>
+                  <td className="px-2 py-3"><StatusPill tone={liquidityTone(h.liquidity)} dot={false}>{h.liquidity}</StatusPill></td>
+                  <td className="px-2 py-3 text-ink-muted">{h.vintage || "—"}</td>
                   {/* IRR */}
-                  <td className="tnum px-2.5 py-3.5 text-right"><IrrBadge irr={m.irr} /></td>
+                  <td className="tnum px-2 py-3 text-right"><IrrBadge irr={m.irr} /></td>
                   {/* MOIC */}
-                  <td className="tnum px-2.5 py-3.5 text-right text-ink-muted">{m.moic > 0 ? fmtMoic(m.moic) : "—"}</td>
+                  <td className="tnum px-2 py-3 text-right text-ink-muted">{m.moic > 0 ? fmtMoic(m.moic) : "—"}</td>
                   {/* Value */}
-                  <td className="tnum px-2.5 py-3.5 text-right font-medium text-ink">{fmtMillions(h.value, 2)}</td>
-                  {/* Weight bar */}
-                  <td className="tnum px-2.5 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <div className="h-1 w-12 overflow-hidden rounded-full bg-secondary">
-                        <div className="h-full rounded-full" style={{ width: `${Math.min(weight * 2.5, 100)}%`, background: colorFor(h.assetClass) }} />
-                      </div>
-                      <span className="w-10 text-right text-ink">{fmtPct(weight, 1)}</span>
-                    </div>
-                  </td>
+                  <td className="tnum px-2 py-3 text-right font-medium text-ink">{fmtMillions(h.value, 2)}</td>
+                  {/* Weight */}
+                  <td className="tnum px-2 py-3 text-right text-ink">{fmtPct(weight, 1)}</td>
                   {/* Unfunded */}
-                  <td className="tnum px-2.5 py-3.5 text-right text-ink-muted">{h.unfunded ? fmtMillions(h.unfunded, 2) : "—"}</td>
+                  <td className="tnum px-2 py-3 text-right text-ink-muted">{h.unfunded ? fmtMillions(h.unfunded, 2) : "—"}</td>
                   {/* Delete */}
-                  <td className="px-3 py-3.5">
+                  <td className="px-2 py-3">
                     {isDeleting ? (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         <button type="button" onClick={() => handleDelete(h.id)} className="rounded-md bg-critical px-2 py-1 text-[11px] font-medium text-white hover:opacity-90">Remove</button>
                         <button type="button" onClick={() => setConfirmDelete(null)} className="rounded-md border border-hairline px-2 py-1 text-[11px] text-ink-muted hover:text-ink">Cancel</button>
                       </div>
                     ) : (
                       <button type="button" onClick={() => setConfirmDelete(h.id)}
-                        className="rounded-md p-1.5 text-transparent transition-colors group-hover:text-ink-muted hover:!text-critical"
+                        className="rounded-md p-1 text-transparent transition-colors group-hover:text-ink-muted hover:!text-critical"
                         aria-label={`Remove ${h.name}`}>
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3 w-3" />
                       </button>
                     )}
                   </td>
@@ -650,12 +643,12 @@ export function HoldingsTable({
           {visible.length > 0 && (
             <tfoot>
               <tr className="border-t-2 border-hairline bg-secondary/40">
-                <td colSpan={8} className="px-4 py-3 text-[12px] font-semibold text-ink">
+                <td colSpan={8} className="px-3 py-2.5 text-[11.5px] font-semibold text-ink">
                   {visible.length < rows.length ? `Filtered total (${visible.length} positions)` : `Total (${rows.length} positions)`}
                 </td>
-                <td className="tnum px-4 py-3 text-right text-[13px] font-semibold text-ink">{fmtMillions(visible.reduce((s, h) => s + h.value, 0), 2)}</td>
-                <td className="tnum px-4 py-3 text-right text-[12px] font-semibold text-ink">{fmtPct(totalAum > 0 ? (visible.reduce((s, h) => s + h.value, 0) / totalAum) * 100 : 0, 1)}</td>
-                <td className="tnum px-4 py-3 text-right text-[12px] font-semibold text-ink">{fmtMillions(visible.reduce((s, h) => s + (h.unfunded ?? 0), 0), 2)}</td>
+                <td className="tnum px-2 py-2.5 text-right text-[12px] font-semibold text-ink">{fmtMillions(visible.reduce((s, h) => s + h.value, 0), 2)}</td>
+                <td className="tnum px-2 py-2.5 text-right text-[11.5px] font-semibold text-ink">{fmtPct(totalAum > 0 ? (visible.reduce((s, h) => s + h.value, 0) / totalAum) * 100 : 0, 1)}</td>
+                <td className="tnum px-2 py-2.5 text-right text-[11.5px] font-semibold text-ink">{fmtMillions(visible.reduce((s, h) => s + (h.unfunded ?? 0), 0), 2)}</td>
                 <td />
               </tr>
             </tfoot>
