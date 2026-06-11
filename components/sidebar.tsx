@@ -179,7 +179,7 @@ export function Sidebar({ role = "client", clients = [], activeClientId = null, 
       <div className="mx-6 h-px bg-sidebar-border" />
       <div className="px-6 py-5">
         <Link
-          href="/settings"
+          href="/account"
           className="flex items-center gap-3 rounded-md py-1 transition-opacity hover:opacity-80"
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[13px] font-medium text-brand">

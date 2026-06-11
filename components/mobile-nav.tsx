@@ -225,7 +225,7 @@ export function MobileNav({ role = "client", clients = [], activeClientId = null
         {/* Footer */}
         <div className="px-6 py-5">
           <Link
-            href="/settings"
+            href="/account"
             onClick={() => setOpen(false)}
             className="flex items-center gap-3 rounded-md py-1"
           >
