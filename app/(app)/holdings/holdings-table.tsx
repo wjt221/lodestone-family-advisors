@@ -92,8 +92,12 @@ function computeMetrics(
     { date: today, amount: currentValue },
   ];
 
-  // Prefer computed XIRR from dated flows; fall back to the stored irr column.
-  const irrVal = hasCashFlows ? xirr(xirrFlows) : (storedIrr ?? null);
+  // Prefer a computed XIRR from dated flows, but fall back to the stored irr
+  // column whenever the solver can't produce one — e.g. a holding with only
+  // capital calls and no distributions yet (all same-sign flows), or no dated
+  // flows at all. This is why IRR previously appeared for some rows but not all.
+  const computedIrr = hasCashFlows ? xirr(xirrFlows) : null;
+  const irrVal = computedIrr ?? storedIrr ?? null;
   const moicVal = moic(totalInvested, currentValue, totalDistributions);
 
   return { irr: irrVal, moic: moicVal, totalInvested, totalDistributions };
@@ -413,7 +417,7 @@ function ColHeader({ label, sortKey, current, dir, onSort, right }: {
   const active = current === sortKey;
   const Icon = active ? (dir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;
   return (
-    <th className={cn("cursor-pointer select-none whitespace-nowrap px-4 py-3 text-[11.5px] font-semibold uppercase tracking-[0.08em] transition-colors", right ? "text-right" : "text-left", active ? "text-brand" : "text-ink-muted hover:text-ink")} onClick={() => onSort(sortKey)}>
+    <th className={cn("cursor-pointer select-none whitespace-nowrap px-2.5 py-3 text-[11.5px] font-semibold uppercase tracking-[0.08em] transition-colors", right ? "text-right" : "text-left", active ? "text-brand" : "text-ink-muted hover:text-ink")} onClick={() => onSort(sortKey)}>
       <span className="inline-flex items-center gap-1">
         {right && <Icon className="h-3 w-3 opacity-60" />}
         {label}
@@ -536,7 +540,7 @@ export function HoldingsTable({
 
       {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-hairline">
-        <table className="w-full min-w-[1200px] text-[13px]">
+        <table className="w-full min-w-[1000px] text-[13px]">
           <thead>
             <tr className="border-b border-hairline bg-secondary/60">
               <th className="w-8 px-2 py-3" />
@@ -574,33 +578,33 @@ export function HoldingsTable({
                     </button>
                   </td>
                   {/* Name */}
-                  <td className="px-4 py-3.5">
+                  <td className="px-2.5 py-3.5">
                     <div className="flex items-center gap-2.5">
                       <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: colorFor(h.assetClass) }} />
                       <div className="min-w-0">
-                        <p className="max-w-[200px] truncate font-medium text-ink">{h.name}</p>
-                        <p className="max-w-[200px] truncate text-[11px] text-ink-muted/70">{h.manager || ""}{h.vintage ? ` · ${h.vintage}` : ""}</p>
+                        <p className="max-w-[180px] truncate font-medium text-ink">{h.name}</p>
+                        <p className="max-w-[180px] truncate text-[11px] text-ink-muted/70">{h.manager || ""}{h.vintage ? ` · ${h.vintage}` : ""}</p>
                       </div>
                     </div>
                   </td>
                   {/* Asset class */}
-                  <td className="px-4 py-3.5">
-                    <span className="inline-block max-w-[140px] truncate rounded-full px-2 py-0.5 text-[11.5px] font-medium"
+                  <td className="px-2.5 py-3.5">
+                    <span className="inline-block max-w-[120px] truncate rounded-full px-2 py-0.5 text-[11.5px] font-medium"
                       style={{ background: `${colorFor(h.assetClass)}18`, color: colorFor(h.assetClass) }}>
                       {h.assetClass}
                     </span>
                   </td>
-                  <td className="max-w-[130px] truncate px-4 py-3.5 text-ink-muted">{h.entityName || "Managed Accounts"}</td>
-                  <td className="px-4 py-3.5"><StatusPill tone={liquidityTone(h.liquidity)} dot={false}>{h.liquidity}</StatusPill></td>
-                  <td className="px-4 py-3.5 text-ink-muted">{h.vintage || "—"}</td>
+                  <td className="max-w-[110px] truncate px-2.5 py-3.5 text-ink-muted">{h.entityName || "Managed Accounts"}</td>
+                  <td className="px-2.5 py-3.5"><StatusPill tone={liquidityTone(h.liquidity)} dot={false}>{h.liquidity}</StatusPill></td>
+                  <td className="px-2.5 py-3.5 text-ink-muted">{h.vintage || "—"}</td>
                   {/* IRR */}
-                  <td className="tnum px-4 py-3.5 text-right"><IrrBadge irr={m.irr} /></td>
+                  <td className="tnum px-2.5 py-3.5 text-right"><IrrBadge irr={m.irr} /></td>
                   {/* MOIC */}
-                  <td className="tnum px-4 py-3.5 text-right text-ink-muted">{m.moic > 0 ? fmtMoic(m.moic) : "—"}</td>
+                  <td className="tnum px-2.5 py-3.5 text-right text-ink-muted">{m.moic > 0 ? fmtMoic(m.moic) : "—"}</td>
                   {/* Value */}
-                  <td className="tnum px-4 py-3.5 text-right font-medium text-ink">{fmtMillions(h.value, 2)}</td>
+                  <td className="tnum px-2.5 py-3.5 text-right font-medium text-ink">{fmtMillions(h.value, 2)}</td>
                   {/* Weight bar */}
-                  <td className="tnum px-4 py-3.5 text-right">
+                  <td className="tnum px-2.5 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <div className="h-1 w-12 overflow-hidden rounded-full bg-secondary">
                         <div className="h-full rounded-full" style={{ width: `${Math.min(weight * 2.5, 100)}%`, background: colorFor(h.assetClass) }} />
@@ -609,7 +613,7 @@ export function HoldingsTable({
                     </div>
                   </td>
                   {/* Unfunded */}
-                  <td className="tnum px-4 py-3.5 text-right text-ink-muted">{h.unfunded ? fmtMillions(h.unfunded, 2) : "—"}</td>
+                  <td className="tnum px-2.5 py-3.5 text-right text-ink-muted">{h.unfunded ? fmtMillions(h.unfunded, 2) : "—"}</td>
                   {/* Delete */}
                   <td className="px-3 py-3.5">
                     {isDeleting ? (
