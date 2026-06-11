@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -91,7 +91,16 @@ interface MobileNavProps {
 
 export function MobileNav({ role = "client", clients = [], activeClientId = null, userName = null }: MobileNavProps) {
   const [open, setOpen] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    closeButtonRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
   const isStaff = role === "advisor" || role === "admin";
 
   const visibleGroups = NAV_GROUPS.map((group) => ({
@@ -128,6 +137,8 @@ export function MobileNav({ role = "client", clients = [], activeClientId = null
           onClick={() => setOpen(true)}
           className="rounded-md p-1.5 text-white/70 transition-colors hover:text-white"
           aria-label="Open navigation"
+          aria-expanded={open}
+          aria-controls="mobile-nav-drawer"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -138,11 +149,16 @@ export function MobileNav({ role = "client", clients = [], activeClientId = null
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={() => setOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Drawer */}
       <div
+        id="mobile-nav-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation"
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 ease-in-out md:hidden",
           open ? "translate-x-0" : "-translate-x-full",
@@ -161,9 +177,11 @@ export function MobileNav({ role = "client", clients = [], activeClientId = null
             />
           </Link>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={() => setOpen(false)}
             className="rounded-md p-1 text-sidebar-foreground/50 hover:text-white"
+            aria-label="Close navigation"
           >
             <X className="h-5 w-5" />
           </button>
