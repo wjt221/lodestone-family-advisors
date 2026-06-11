@@ -15,6 +15,8 @@ export interface SessionContext {
   configured: boolean;
   userId: string | null;
   email: string | null;
+  /** Display name from the profiles table (full_name), if available. */
+  displayName: string | null;
   role: UserRole;
   /** The client (family office) the current user is scoped to, if any. */
   clientId: string | null;
@@ -30,6 +32,7 @@ export async function getSessionContext(): Promise<SessionContext> {
       configured: false,
       userId: null,
       email: "demo@lodestone.local",
+      displayName: null,
       role: DEMO_ADVISOR_ROLE,
       clientId: selected,
     };
@@ -41,15 +44,15 @@ export async function getSessionContext(): Promise<SessionContext> {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { configured: true, userId: null, email: null, role: "client", clientId: null };
+    return { configured: true, userId: null, email: null, displayName: null, role: "client", clientId: null };
   }
 
   const profileRes = await supabase
     .from("profiles")
-    .select("role, email")
+    .select("role, email, full_name")
     .eq("id", user.id)
     .maybeSingle();
-  const profile = profileRes.data as { role: UserRole; email: string | null } | null;
+  const profile = profileRes.data as { role: UserRole; email: string | null; full_name: string | null } | null;
 
   const role = (profile?.role ?? "client") as UserRole;
   const clientId = await resolveClientId(supabase, role);
@@ -58,6 +61,7 @@ export async function getSessionContext(): Promise<SessionContext> {
     configured: true,
     userId: user.id,
     email: profile?.email ?? user.email ?? null,
+    displayName: profile?.full_name ?? null,
     role,
     clientId,
   };

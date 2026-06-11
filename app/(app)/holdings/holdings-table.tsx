@@ -562,7 +562,6 @@ export function HoldingsTable({
               const weight = totalAum > 0 ? (h.value / totalAum) * 100 : 0;
               const isDeleting = confirmDelete === h.id;
               const isExpanded = expandedRow === h.id;
-              const hasCf = (cashFlows[h.id] ?? []).length > 0;
 
               return [
                 <tr key={h.id}

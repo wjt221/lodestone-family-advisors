@@ -75,13 +75,29 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function userInitials(name: string | null, configured: boolean): string {
+  if (name) {
+    const parts = name.split(/[\s@.]+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return configured ? "LF" : "SC";
+}
+
+function roleLabel(role: UserRole): string {
+  if (role === "admin") return "Administrator";
+  if (role === "advisor") return "Advisor";
+  return "Client";
+}
+
 interface SidebarProps {
   role?: UserRole;
   clients?: ClientSummary[];
   activeClientId?: string | null;
+  userName?: string | null;
 }
 
-export function Sidebar({ role = "client", clients = [], activeClientId = null }: SidebarProps) {
+export function Sidebar({ role = "client", clients = [], activeClientId = null, userName = null }: SidebarProps) {
   const pathname = usePathname();
   const isStaff = role === "advisor" || role === "admin";
 
@@ -167,14 +183,14 @@ export function Sidebar({ role = "client", clients = [], activeClientId = null }
           className="flex items-center gap-3 rounded-md py-1 transition-opacity hover:opacity-80"
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[13px] font-medium text-brand">
-            {isSupabaseConfigured() ? "LF" : "SC"}
+            {userInitials(userName, isSupabaseConfigured())}
           </div>
           <div className="min-w-0">
             <p className="truncate text-[13px] font-medium text-white">
-              {isSupabaseConfigured() ? "Lodestone Family Advisors" : CLIENT.advisor}
+              {userName ?? (isSupabaseConfigured() ? "Lodestone Family Advisors" : CLIENT.advisor)}
             </p>
             <p className="truncate text-[11px] text-sidebar-foreground/45">
-              Lead Advisor
+              {roleLabel(role)}
             </p>
           </div>
           <Settings className="ml-auto h-4 w-4 shrink-0 text-sidebar-foreground/40" />

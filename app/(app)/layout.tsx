@@ -11,12 +11,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const role = ctx.role as UserRole;
   const activeClientId = ctx.clientId ?? null;
+  const userName = ctx.displayName ?? ctx.email ?? null;
 
   return (
     <>
-      <MobileNav role={role} clients={clients} activeClientId={activeClientId} />
+      <MobileNav role={role} clients={clients} activeClientId={activeClientId} userName={userName} />
       <div className="flex min-h-screen">
-        <Sidebar role={role} clients={clients} activeClientId={activeClientId} />
+        <Sidebar role={role} clients={clients} activeClientId={activeClientId} userName={userName} />
         <main className="flex-1 overflow-x-hidden">
           <div className="mx-auto w-full max-w-[1180px] px-4 py-6 md:px-8 md:py-10 lg:px-12">
             {children}
