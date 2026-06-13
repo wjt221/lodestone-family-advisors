@@ -12,6 +12,8 @@ import { getPolicyRanges } from "@/lib/data/allocations";
 import { getPerformance } from "@/lib/data/performance";
 import { getMeetings } from "@/lib/data/meetings";
 import { getRiskRegister } from "@/lib/data/risk";
+import { getClientIPS } from "@/lib/data/ips";
+import { STATUS_LABELS } from "@/lib/ips/ipsDefaults";
 import {
   breakdownBy,
   marketMixOf,
@@ -26,7 +28,7 @@ const pct = (v: number | null, digits = 1) =>
   v == null ? "—" : `${(v * 100).toFixed(digits)}%`;
 
 export default async function DashboardPage() {
-  const [holdings, client, entities, ranges, performance, meetings, risks] =
+  const [holdings, client, entities, ranges, performance, meetings, risks, ips] =
     await Promise.all([
       getHoldingsDetailed(),
       getActiveClient(),
@@ -35,6 +37,7 @@ export default async function DashboardPage() {
       getPerformance(),
       getMeetings(),
       getRiskRegister(),
+      getClientIPS(),
     ]);
 
   const total = totalValue(holdings);
@@ -366,6 +369,7 @@ export default async function DashboardPage() {
           title="Upcoming decisions"
           description="Items routed to the next family review with your advisor."
         />
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
         <Panel>
           {nextMeeting ? (
             <div className="rounded-lg border border-hairline bg-secondary/40 p-4">
@@ -396,6 +400,29 @@ export default async function DashboardPage() {
             View governance calendar <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </Panel>
+
+        {/* Investment Policy (Advisor-Led IPS Workbench) */}
+        <Panel>
+          <PanelHeader title="Investment policy" />
+          <Stat
+            label="IPS strategy profile"
+            value={ips ? `${ips.completionPercentage}%` : "Not started"}
+            sub={STATUS_LABELS[ips?.status ?? "not_started"]}
+          />
+          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full rounded-full bg-brand transition-all"
+              style={{ width: `${ips?.completionPercentage ?? 0}%` }}
+            />
+          </div>
+          <Link
+            href="/ips"
+            className="mt-4 flex items-center gap-1 text-[12px] font-medium text-ink-muted transition-colors hover:text-brand"
+          >
+            {ips ? "Open IPS Workbench" : "Start IPS Strategy Session"} <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
+        </Panel>
+        </div>
       </section>
 
       <p className="mt-10 border-t border-hairline pt-5 text-[11px] leading-relaxed text-ink-muted">

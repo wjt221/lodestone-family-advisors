@@ -318,6 +318,62 @@ export type Database = {
         }
         Relationships: []
       }
+      client_ips_profiles: {
+        Row: {
+          advisor_session_data: Json
+          approved_at: string | null
+          approved_by_advisor_id: string | null
+          client_id: string
+          completion_percentage: number
+          created_at: string
+          created_by_advisor_id: string | null
+          id: string
+          ips_data: Json
+          last_updated_by_advisor_id: string | null
+          status: string
+          summary_data: Json
+          updated_at: string
+        }
+        Insert: {
+          advisor_session_data?: Json
+          approved_at?: string | null
+          approved_by_advisor_id?: string | null
+          client_id: string
+          completion_percentage?: number
+          created_at?: string
+          created_by_advisor_id?: string | null
+          id?: string
+          ips_data?: Json
+          last_updated_by_advisor_id?: string | null
+          status?: string
+          summary_data?: Json
+          updated_at?: string
+        }
+        Update: {
+          advisor_session_data?: Json
+          approved_at?: string | null
+          approved_by_advisor_id?: string | null
+          client_id?: string
+          completion_percentage?: number
+          created_at?: string
+          created_by_advisor_id?: string | null
+          id?: string
+          ips_data?: Json
+          last_updated_by_advisor_id?: string | null
+          status?: string
+          summary_data?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_ips_profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diligence_items: {
         Row: {
           alignment: string | null

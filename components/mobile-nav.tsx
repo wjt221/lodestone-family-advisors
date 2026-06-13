@@ -37,7 +37,7 @@ const NAV_GROUPS = [
   {
     title: "Strategy & Policy",
     items: [
-      { label: "Policy Statement", href: "/ips", icon: FileText },
+      { label: "IPS Workbench", href: "/ips", icon: FileText },
       { label: "Allocation", href: "/allocation", icon: Scale },
       { label: "Risk Register", href: "/risk", icon: ShieldAlert },
     ],
