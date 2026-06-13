@@ -17,19 +17,6 @@ export const CLIENT = {
   reportingCurrency: "USD",
 };
 
-// Second demo family office — fictional, for multi-client switcher demo only
-export const DIEZ_CLIENT = {
-  id: "mock-diez",
-  name: "Diez Family Office",
-  shortName: "Diez",
-  advisor: "Sarah Chen, CFA",
-  advisorTitle: "Lead Advisor, Lodestone Family Advisors",
-  relationshipSince: "2021",
-  aum: 31_500_000,
-  asOf: "May 31, 2026",
-  reportingCurrency: "USD",
-};
-
 // ── Legal entities ───────────────────────────────────────────────────────────
 export const ENTITIES = [
   {

@@ -6,7 +6,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionContext } from "@/lib/data/session";
 
-const VALID_MOCK_CLIENTS = new Set(["mock-atwater", "mock-diez"]);
+const VALID_MOCK_CLIENTS = new Set(["mock-atwater"]);
 
 export async function switchClient(clientId: string): Promise<void> {
   const ctx = await getSessionContext();
